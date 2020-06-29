@@ -1,0 +1,210 @@
+ /*
+  * sm5708.h - Driver for the SM5708
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+  * the Free Software Foundation; either version 2 of the License, or
+  * (at your option) any later version.
+  *
+  * This program is distributed in the hope that it will be useful,
+  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  * GNU General Public License for more details.
+  *
+  * You should have received a copy of the GNU General Public License
+  * along with this program; if not, see <http://www.gnu.org/licenses/>.
+  *
+  * SM5708 has Flash, RGB, Charger, Regulator devices.
+  * The devices share the same I2C bus and included in
+  * this mfd driver.
+  */
+
+#ifndef __SM5708_H__
+#define __SM5708_H__
+
+#include <linux/i2c.h>
+#include <linux/mutex.h>
+#include <linux/platform_device.h>
+#include <linux/regmap.h>
+
+enum sm5708_boost_output {
+	SM5708_BST_OUT_4v0,
+	SM5708_BST_OUT_4v1,
+	SM5708_BST_OUT_4v2,
+	SM5708_BST_OUT_4v3,
+	SM5708_BST_OUT_4v4,
+	SM5708_BST_OUT_4v5,
+	SM5708_BST_OUT_4v6,
+	SM5708_BST_OUT_4v7,
+	SM5708_BST_OUT_4v8,
+	SM5708_BST_OUT_4v9,
+	SM5708_BST_OUT_5v0,
+	SM5708_BST_OUT_5v1,
+};
+
+enum sm5708_otg_current {
+	SM5708_OTG_CURRENT_500mA,
+	SM5708_OTG_CURRENT_700mA,
+	SM5708_OTG_CURRENT_900mA,
+	SM5708_OTG_CURRENT_1500mA,
+};
+
+enum mode_request {
+	SM5708_CHARGE	= 1,
+	SM5708_TORCH	= 2,
+	SM5708_FLASH	= 4,
+	SM5708_OTG	= 8,
+};
+
+enum sm5708_mode {
+	SM5708_MODE_SUSPEND             = 0,
+	SM5708_MODE_FACTORY             = 1,
+	SM5708_MODE_CHG_OFF             = 4,
+	SM5708_MODE_CHG_ON              = 5,
+	SM5708_MODE_FLASH_BOOST         = 6,
+	SM5708_MODE_USB_OTG             = 7,
+};
+
+enum sm5708_reg {
+	SM5708_REG_INT1			= 0x00,
+	SM5708_REG_INT2			= 0x01,
+	SM5708_REG_INT3			= 0x02,
+	SM5708_REG_INT4			= 0x03,
+	SM5708_REG_INTMSK1		= 0x04,
+	SM5708_REG_INTMSK2		= 0x05,
+	SM5708_REG_INTMSK3		= 0x06,
+	SM5708_REG_INTMSK4		= 0x07,
+	SM5708_REG_STATUS1		= 0x08,
+	SM5708_REG_STATUS2		= 0x09,
+	SM5708_REG_STATUS3		= 0x0A,
+	SM5708_REG_STATUS4		= 0x0B,
+	SM5708_REG_CNTL			= 0x0C,
+	SM5708_REG_VBUSCNTL		= 0x0D,
+	SM5708_REG_CHGCNTL1		= 0x0F,
+	SM5708_REG_CHGCNTL2		= 0x10,
+	SM5708_REG_CHGCNTL3		= 0x12,
+	SM5708_REG_CHGCNTL4		= 0x13,
+	SM5708_REG_CHGCNTL5		= 0x14,
+	SM5708_REG_CHGCNTL6		= 0x15,
+	SM5708_REG_CHGCNTL7		= 0x16,
+	SM5708_REG_FLED1CNTL1		= 0x17,
+	SM5708_REG_FLED1CNTL2		= 0x18,
+	SM5708_REG_FLED1CNTL3		= 0x19,
+	SM5708_REG_FLED1CNTL4		= 0x1A,
+	SM5708_REG_FLED2CNTL1		= 0x1B,
+	SM5708_REG_FLED2CNTL2		= 0x1C,
+	SM5708_REG_FLED2CNTL3		= 0x1D,
+	SM5708_REG_FLED2CNTL4		= 0x1E,
+	SM5708_REG_FLEDCNTL5		= 0x1F,
+	SM5708_REG_FLEDCNTL6		= 0x20,
+	SM5708_REG_SBPSCNTL		= 0x21,
+	SM5708_REG_CNTLMODEONOFF	= 0x22,
+	SM5708_REG_CNTLPWM		= 0x23,
+	SM5708_REG_RLEDCURRENT		= 0x24,
+	SM5708_REG_GLEDCURRENT		= 0x25,
+	SM5708_REG_BLEDCURRENT		= 0x26,
+	SM5708_REG_DIMSLPRLEDCNTL	= 0x27,
+	SM5708_REG_DIMSLPGLEDCNTL	= 0x28,
+	SM5708_REG_DIMSLPBLEDCNTL	= 0x29,
+	SM5708_REG_RLEDCNTL1		= 0x2A,
+	SM5708_REG_RLEDCNTL2		= 0x2B,
+	SM5708_REG_RLEDCNTL3		= 0x2C,
+	SM5708_REG_RLEDCNTL4		= 0x2D,
+	SM5708_REG_GLEDCNTL1		= 0x2E,
+	SM5708_REG_GLEDCNTL2		= 0x2F,
+	SM5708_REG_GLEDCNTL3		= 0x30,
+	SM5708_REG_GLEDCNTL4		= 0x31,
+	SM5708_REG_BLEDCNTL1		= 0x32,
+	SM5708_REG_BLEDCNTL2		= 0x33,
+	SM5708_REG_BLEDCNTL3		= 0x34,
+	SM5708_REG_BLEDCNTL4		= 0x35,
+	SM5708_REG_HAPTICCNTL		= 0x36,
+	SM5708_REG_DEVICEID		= 0x37,
+	SM5708_REG_FACTORY		= 0x3E,
+
+	SM5708_REG_MAX,
+};
+
+enum sm5708_irq {
+	SM5708_VBUSPOK_IRQ,
+	SM5708_VBUSUVLO_IRQ,
+	SM5708_VBUSOVP_IRQ,
+	SM5708_VBUSLIMIT_IRQ,
+
+	SM5708_AICL_IRQ,
+	SM5708_BATOVP_IRQ,
+	SM5708_NOBAT_IRQ,
+	SM5708_CHGON_IRQ,
+	SM5708_Q4FULLON_IRQ,
+	SM5708_TOPOFF_IRQ,
+	SM5708_DONE_IRQ,
+	SM5708_WDTMROFF_IRQ,
+
+	SM5708_THEMREG_IRQ,
+	SM5708_THEMSHDN_IRQ,
+	SM5708_OTGFAIL_IRQ,
+	SM5708_DISLIMIT_IRQ,
+	SM5708_PRETMROFF_IRQ,
+	SM5708_FASTTMROFF_IRQ,
+	SM5708_LOWBATT_IRQ,
+	SM5708_nENQ4_IRQ,
+
+	SM5708_FLED1SHORT_IRQ,
+	SM5708_FLED1OPEN_IRQ,
+	SM5708_FLED2SHORT_IRQ,
+	SM5708_FLED2OPEN_IRQ,
+	SM5708_BOOSTPOK_NG_IRQ,
+	SM5708_BOOSTPOK_IRQ,
+	SM5708_ABSTMR1OFF_IRQ,
+	SM5708_SBPS_IRQ,
+
+	SM5708_MAX_IRQ,
+};
+
+#define SM5708_VBUSPOK_STATUS1		BIT(0)
+#define SM5708_VBUSUVLO_STATUS1		BIT(1)
+#define SM5708_VBUSOVP_STATUS1		BIT(2)
+#define SM5708_VBUSLIMIT_STATUS1	BIT(3)
+
+#define SM5708_AICL_STATUS2		BIT(0)
+#define SM5708_BATOVP_STATUS2		BIT(1)
+#define SM5708_NOBAT_STATUS2		BIT(2)
+#define SM5708_CHGON_STATUS2		BIT(3)
+#define SM5708_Q4FULLON_STATUS2		BIT(4)
+#define SM5708_TOPOFF_STATUS2		BIT(5)
+#define SM5708_DONE_STATUS2		BIT(6)
+#define SM5708_WDTMROFF_STATUS2		BIT(7)
+
+#define SM5708_THEMREG_STATUS3		BIT(0)
+#define SM5708_THEMSHDN_STATUS3		BIT(1)
+#define SM5708_OTGFAIL_STATUS3		BIT(2)
+#define SM5708_DISLIMIT_STATUS3		BIT(3)
+#define SM5708_PRETMROFF_STATUS3	BIT(4)
+#define SM5708_FASTTMROFF_STATUS3	BIT(5)
+#define SM5708_LOWBATT_STATUS3		BIT(6)
+#define SM5708_nENQ4_STATUS3		BIT(7)
+
+#define SM5708_FLED1SHORT_STATUS4	BIT(0)
+#define SM5708_FLED1OPEN_STATUS4	BIT(1)
+#define SM5708_FLED2SHORT_STATUS4	BIT(2)
+#define SM5708_FLED2OPEN_STATUS4	BIT(3)
+#define SM5708_BOOSTPOK_NG_STATUS4	BIT(4)
+#define SM5708_BOOSTPOK_STATUS4		BIT(5)
+#define SM5708_ABSTMR1OFF_STATUS4	BIT(6)
+#define SM5708_SBPS_STATUS4		BIT(7)
+
+struct sm5708_chip {
+	struct device *dev;
+	struct i2c_client *i2c;
+	int irq;
+
+	struct regmap *regmap;
+	struct regmap_irq_chip_data *irq_data;
+	struct mutex mode_mutex;
+	u8  requested_mode;
+	u8  op_mode;
+};
+
+extern void sm5708_request_mode(struct device *dev, u8 mode_mask, bool enable);
+
+#endif /* __SM5708_H__ */
