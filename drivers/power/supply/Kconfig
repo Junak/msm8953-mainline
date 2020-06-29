@@ -458,6 +458,20 @@ config BATTERY_MAX1721X
 	  Say Y here to enable support for the MAX17211/MAX17215 standalone
 	  battery gas-gauge.
 
+config FUEL_GAUGE_SM5708
+	tristate "Siliconmitus SM5708 Fuel Gauge support"
+	depends on I2C
+	help
+	  SM5708 is fuel-gauge systems for lithium-ion (Li+) batteries
+	  in handheld and portable equipment. The SM5708 is configured
+	  to operate with a single lithium cell
+
+config CHARGER_SM5708
+	tristate "Siliconmitus SM5708 Charger support"
+	depends on MFD_SM5708
+	help
+	  Say Y here to enable support for the SM5708 charger
+
 config BATTERY_TWL4030_MADC
 	tristate "TWL4030 MADC battery driver"
 	depends on TWL4030_MADC
