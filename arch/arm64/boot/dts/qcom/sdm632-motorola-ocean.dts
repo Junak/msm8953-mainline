@@ -137,6 +137,10 @@
 	};
 };
 
+&lpass {
+	status = "okay";
+};
+
 &mpss {
 	pll-supply = <&pm8953_l7>;
 	status = "okay";
