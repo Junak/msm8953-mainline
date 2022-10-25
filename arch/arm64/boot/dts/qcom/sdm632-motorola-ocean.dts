@@ -115,6 +115,10 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&panel_default>;
 
+		reset-gpios = <&tlmm 61 GPIO_ACTIVE_LOW>;
+
+		//TODO: missing regs
+
 		port {
 			panel_in: endpoint {
 				remote-endpoint = <&mdss_dsi0_out>;
