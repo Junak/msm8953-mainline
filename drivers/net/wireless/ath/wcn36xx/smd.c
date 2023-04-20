@@ -2654,7 +2654,7 @@ static int wcn36xx_smd_tx_compl_ind(struct wcn36xx *wcn, void *buf, size_t len)
 {
 	struct wcn36xx_hal_tx_compl_ind_msg *rsp = buf;
 
-	if (len != sizeof(*rsp)) {
+	if (len < sizeof(*rsp)) {
 		wcn36xx_warn("Bad TX complete indication\n");
 		return -EIO;
 	}
