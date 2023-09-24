@@ -1015,6 +1015,11 @@ static int alpha_pll_huayra_set_rate(struct clk_hw *hw, unsigned long rate,
 	u32 l, a, ctl, cur_alpha = 0;
 
 	rate = alpha_huayra_pll_round_rate(rate, prate, &l, &a);
+	if (pll->vco_table && !alpha_pll_find_vco(pll, rate)) {
+		pr_err("%s: rate is not in a valid vco range: %lu\n",
+		       clk_hw_get_name(hw), rate);
+		return -EINVAL;
+	}
 
 	regmap_read(pll->clkr.regmap, PLL_USER_CTL(pll), &ctl);
 
@@ -1054,10 +1059,24 @@ static int alpha_pll_huayra_set_rate(struct clk_hw *hw, unsigned long rate,
 static int alpha_pll_huayra_determine_rate(struct clk_hw *hw,
 					   struct clk_rate_request *req)
 {
+	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
+	unsigned long min_freq, max_freq, ret;
 	u32 l, a;
 
-	req->rate = alpha_huayra_pll_round_rate(req->rate,
-						req->best_parent_rate, &l, &a);
+	ret = alpha_huayra_pll_round_rate(req->rate,
+					  req->best_parent_rate, &l, &a);
+
+
+	if (!pll->vco_table || alpha_pll_find_vco(pll, ret)) {
+		req->rate = ret;
+
+		return 0;
+	}
+
+	min_freq = pll->vco_table[0].min_freq;
+	max_freq = pll->vco_table[pll->num_vco - 1].max_freq;
+
+	req->rate = clamp(ret, min_freq, max_freq);
 
 	return 0;
 }
