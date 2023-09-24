@@ -1067,7 +1067,16 @@ static int alpha_pll_huayra_set_rate(struct clk_hw *hw, unsigned long rate,
 static int alpha_pll_huayra_determine_rate(struct clk_hw *hw,
 					   struct clk_rate_request *req)
 {
+	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
+	unsigned long min_freq, max_freq;
 	u32 l, a;
+
+	if (pll->vco_table && !alpha_pll_find_vco(pll, req->rate)) {
+		min_freq = pll->vco_table[0].min_freq;
+		max_freq = pll->vco_table[pll->num_vco - 1].max_freq;
+
+		req->rate = clamp(req->rate, min_freq, max_freq);
+	}
 
 	req->rate = alpha_huayra_pll_round_rate(req->rate,
 						req->best_parent_rate, &l, &a);
