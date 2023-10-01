@@ -1575,6 +1575,16 @@
 
 			iommus = <&apps_iommu 0x14>;
 
+			interconnects = <&snoc_mm MAS_VFE0 RPM_ACTIVE_TAG
+					 &bimc SLV_EBI RPM_ACTIVE_TAG>,
+					<&snoc_mm MAS_VFE1 RPM_ACTIVE_TAG
+					 &bimc SLV_EBI RPM_ACTIVE_TAG>,
+					<&bimc MAS_APPS_PROC RPM_ACTIVE_TAG
+					 &pcnoc SLV_CAMERA_SS_CFG RPM_ACTIVE_TAG>;
+			interconnect-names = "cam_vfe0_mem",
+					     "cam_vfe1_mem",
+					     "cam_ahb";
+
 			power-domains = <&gcc VFE0_GDSC>,
 					<&gcc VFE1_GDSC>;
 			power-domain-names = "vfe0", "vfe1";
@@ -1797,6 +1807,12 @@
 				 <&gcc GCC_VENUS0_AHB_CLK>,
 				 <&gcc GCC_VENUS0_AXI_CLK>;
 			clock-names = "core", "iface", "bus";
+			interconnects = <&snoc_mm MAS_VENUS RPM_ACTIVE_TAG
+					 &bimc SLV_EBI RPM_ACTIVE_TAG>,
+					<&bimc MAS_APPS_PROC RPM_ACTIVE_TAG
+					 &pcnoc SLV_VENUS_CFG RPM_ACTIVE_TAG>;
+			interconnect-names = "video-mem",
+					     "cpu-cfg";
 			interrupts = <GIC_SPI 44 IRQ_TYPE_LEVEL_HIGH>;
 			iommus = <&apps_iommu 0x16>;
 			memory-region = <&venus_mem>;
