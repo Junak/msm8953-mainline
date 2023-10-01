@@ -1309,6 +1309,9 @@
 
 				phys = <&mdss_dsi0_phy>;
 
+				operating-points-v2 = <&dsi0_opp_table>;
+				power-domains = <&rpmpd MSM8953_VDDCX>;
+
 				#address-cells = <1>;
 				#size-cells = <0>;
 
@@ -1330,6 +1333,25 @@
 						mdss_dsi0_out: endpoint {
 						};
 					};
+				};
+
+				dsi0_opp_table: opp-table {
+					compatible = "operating-points-v2";
+
+						opp-131250000 {
+								opp-hz = /bits/ 64 <131250000>;
+								required-opps = <&rpmpd_opp_low_svs>;
+						};
+
+						opp-210000000 {
+								opp-hz = /bits/ 64 <210000000>;
+								required-opps = <&rpmpd_opp_svs>;
+						};
+
+						opp-262500000 {
+								opp-hz = /bits/ 64 <262500000>;
+								required-opps = <&rpmpd_opp_nom>;
+						};
 				};
 			};
 
@@ -1379,6 +1401,9 @@
 
 				phys = <&mdss_dsi1_phy>;
 
+				operating-points-v2 = <&dsi1_opp_table>;
+				power-domains = <&rpmpd MSM8953_VDDCX>;
+
 				status = "disabled";
 
 				ports {
@@ -1397,6 +1422,25 @@
 						mdss_dsi1_out: endpoint {
 						};
 					};
+				};
+
+				dsi1_opp_table: opp-table {
+					compatible = "operating-points-v2";
+
+						opp-131250000 {
+								opp-hz = /bits/ 64 <131250000>;
+								required-opps = <&rpmpd_opp_low_svs>;
+						};
+
+						opp-210000000 {
+								opp-hz = /bits/ 64 <210000000>;
+								required-opps = <&rpmpd_opp_svs>;
+						};
+
+						opp-262500000 {
+								opp-hz = /bits/ 64 <262500000>;
+								required-opps = <&rpmpd_opp_nom>;
+						};
 				};
 			};
 
