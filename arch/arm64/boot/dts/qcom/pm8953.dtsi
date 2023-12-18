@@ -4,6 +4,8 @@
 #include <dt-bindings/iio/qcom,spmi-vadc.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/input/linux-event-codes.h>
+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
+#include <dt-bindings/pinctrl/qcom,pmic-mpp.h>
 #include <dt-bindings/spmi/spmi.h>
 
 / {
@@ -106,6 +108,17 @@
 			reg = <0x6000>, <0x6100>;
 			reg-names = "rtc", "alarm";
 			interrupts = <0x0 0x61 0x1 IRQ_TYPE_EDGE_RISING>;
+		};
+
+		pm8953_mpps: gpio@a000 {
+			compatible = "qcom,pm8950-mpp", "qcom,spmi-mpp";
+			reg = <0xa000>;
+			gpio-ranges = <&pm8953_mpps 0 0 4>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			status = "disabled";
 		};
 
 		pm8953_gpios: gpio@c000 {
