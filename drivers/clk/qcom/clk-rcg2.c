@@ -273,6 +273,8 @@ static int _freq_tbl_determine_rate(struct clk_hw *hw, const struct freq_tbl *f,
 			do_div(tmp, f->m);
 			rate = tmp;
 		}
+
+		rate = clk_hw_round_rate(p, rate);
 	} else {
 		rate = clk_hw_get_rate(p);
 	}
