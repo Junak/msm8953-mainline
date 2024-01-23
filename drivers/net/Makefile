@@ -55,6 +55,7 @@ endif
 obj-$(CONFIG_ETHERNET) += ethernet/
 obj-$(CONFIG_FDDI) += fddi/
 obj-$(CONFIG_QCOM_IPA) += ipa/
+obj-$(CONFIG_QCOM_IPA2_LITE) += ipa2-lite/
 obj-$(CONFIG_PLIP) += plip/
 obj-$(CONFIG_PPP) += ppp/
 obj-$(CONFIG_PPP_ASYNC) += ppp/
