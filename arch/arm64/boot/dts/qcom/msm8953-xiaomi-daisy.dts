@@ -80,6 +80,16 @@
 					"0", "0", "1";
 		};
 	};
+
+	avdd_cam_front: vreg-cam-front-avdd {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg-cam-front-avdd";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		gpio = <&tlmm 62 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		vin-supply = <&pm8953_l22>;
+	};
 };
 
 &battery {
@@ -87,6 +97,63 @@
 	constant-charge-current-max-microamp = <1000000>;
 	voltage-min-design-microvolt = <3400000>;
 	voltage-max-design-microvolt = <4400000>;
+};
+
+&camss {
+	status = "okay";
+	vdda-supply = <&pm8953_s3>;
+
+	ports {
+		port@2 {
+			reg = <2>;
+			csiphy2_ep: endpoint {
+				clock-lanes = <7>;
+				data-lanes = <0 1>;
+				remote-endpoint = <&front_cam_ep>;
+			};
+		};
+	};
+};
+
+&cci {
+	pinctrl-names = "default";
+	pinctrl-0 = <&cci0_default>,
+		    <&cci1_default>,
+		    <&camss_mclk0_default>,
+		    <&camss_mclk1_default>;
+
+	status = "okay";
+};
+
+&cci_i2c1 {
+	camera-sensor@36 { // Front camera
+		compatible = "ovti,ov5675";
+
+		reg = <0x36>;
+
+		clocks = <&gcc GCC_CAMSS_MCLK1_CLK>;
+
+		pinctrl-0 = <&cam_sensor_front_default>;
+		pinctrl-names = "default";
+
+		reset-gpios = <&tlmm 129 GPIO_ACTIVE_LOW>;
+
+		avdd-supply= <&avdd_cam_front>;
+		dvdd-supply = <&pm8953_l23>;
+		dovdd-supply = <&pm8953_l6>;
+		rotation = <270>;
+		orientation = <0>;
+
+		status = "okay";
+
+		port {
+			front_cam_ep: endpoint {
+				data-lanes = <0 1>;
+				remote-endpoint = <&csiphy2_ep>;
+				link-frequencies = /bits/ 64 <450000000>;
+			};
+		};
+	};
 };
 
 &max98927_codec {
@@ -111,6 +178,10 @@
 
 &panel {
 	compatible = "xiaomi,daisy-panel";
+};
+
+&pm8953_l23 {
+	regulator-min-microvolt = <1200000>;
 };
 
 &pmi8950_wled {
@@ -169,6 +240,13 @@
 		function = "pri_mi2s";
 		drive-strength = <2>;
 		bias-pull-down;
+	};
+
+	cam_sensor_front_default: cam-sensor-front-default-state {
+		pins = "gpio129";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
 	};
 };
 
