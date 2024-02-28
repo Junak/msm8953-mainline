@@ -379,7 +379,7 @@
 	pinctrl-0 = <&cdc_pdm_lines_default &cdc_pdm_lines_2_default &cdc_pdm_comp_lines_default>;
 	pinctrl-1 = <&cdc_pdm_lines_sleep &cdc_pdm_lines_2_sleep &cdc_pdm_comp_lines_sleep>;
 
-	model = "msm8916";
+	model = "motorola-potter";
 };
 
 &tlmm {
