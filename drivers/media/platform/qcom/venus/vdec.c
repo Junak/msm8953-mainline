@@ -575,7 +575,8 @@ vdec_decoder_cmd(struct file *file, void *fh, struct v4l2_decoder_cmd *cmd)
 		 * avoids misapplying this quirk and breaking VP9 decode on SC7280.
 		 */
 
-		if (IS_IRIS2(inst->core) && is_fw_rev_or_older(inst->core, 1, 0, 87))
+		if ((IS_IRIS2(inst->core) && is_fw_rev_or_older(inst->core, 1, 0, 87)) ||
+		    IS_V3(inst->core))
 			fdata.device_addr = 0;
 		else
 			fdata.device_addr = 0xdeadb000;
