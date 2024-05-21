@@ -111,6 +111,10 @@
 	};
 };
 
+&aw2013_led {
+	status = "okay";
+};
+
 &battery {
 	charge-full-design-microamp-hours = <4000000>;
 	constant-charge-current-max-microamp = <1000000>;
