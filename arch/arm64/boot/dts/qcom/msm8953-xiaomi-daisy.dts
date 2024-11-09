@@ -217,6 +217,10 @@
 	voltage-max-design-microvolt = <4400000>;
 };
 
+&gpu_zap_shader {
+	firmware-name = "qcom/msm8953/xiaomi/daisy/a506_zap.mdt";
+};
+
 &sdhc_2 {
 	cd-gpios = <&tlmm 133 GPIO_ACTIVE_HIGH>;
 };

@@ -109,6 +109,10 @@
 	status = "okay";
 };
 
+&gpu_zap_shader {
+	firmware-name = "qcom/msm8953/motorola/potter/a506_zap.mdt";
+};
+
 &hsusb_phy {
 	vdd-supply = <&pm8953_l3>;
 	vdda-pll-supply = <&pm8953_l7>;
@@ -455,8 +459,11 @@
 
 &wcnss {
 	status = "okay";
-
 	vddpx-supply = <&pm8953_l5>;
+};
+
+&wcnss_ctrl {
+	firmware-name = "qcom/msm8953/motorola/potter/WCNSS_qcom_wlan_nv.bin";
 };
 
 &wcnss_iris {
