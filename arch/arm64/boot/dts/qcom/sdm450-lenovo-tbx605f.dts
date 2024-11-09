@@ -84,6 +84,10 @@
 	};
 };
 
+&gpu_zap_shader {
+	firmware-name = "qcom/msm8953/lenovo/tbx605f/a506_zap.mdt";
+};
+
 &mdss {
 	status = "okay";
 };

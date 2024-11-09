@@ -247,6 +247,10 @@
 	touchscreen-size-y = <1920>;
 };
 
+&gpu_zap_shader {
+	firmware-name = "qcom/msm8953/xiaomi/markw/a506_zap.mdt";
+};
+
 &i2c_3 {
 	status = "okay";
 

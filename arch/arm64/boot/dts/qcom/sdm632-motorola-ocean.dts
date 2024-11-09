@@ -97,6 +97,10 @@
 	};
 };
 
+&gpu_zap_shader {
+	firmware-name = "qcom/msm8953/motorola/ocean/a506_zap.mdt";
+};
+
 &mdss {
 	status = "okay";
 };
@@ -453,8 +457,11 @@
 
 &wcnss {
 	status = "okay";
-
 	vddpx-supply = <&pm8953_l5>;
+};
+
+&wcnss_ctrl {
+	firmware-name = "qcom/msm8953/motorola/ocean/WCNSS_qcom_wlan_nv.bin";
 };
 
 &wcnss_iris {
