@@ -15,6 +15,10 @@
 	charge-full-design-microamp-hours = <2900000>;
 };
 
+&gpu_zap_shader {
+	firmware-name = "qcom/msm8953/asus/ze552kl/a506_zap.mdt";
+};
+
 &sound_card {
 	model = "asus-ze552kl";
 };

@@ -192,6 +192,10 @@
 	touchscreen-size-y = <2280>;
 };
 
+&gpu_zap_shader {
+	firmware-name = "qcom/msm8953/xiaomi/daisy/a506_zap.mdt";
+};
+
 &gt917d_ts {
 	status = "disabled";
 

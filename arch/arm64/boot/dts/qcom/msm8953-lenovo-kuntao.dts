@@ -55,6 +55,10 @@
 	};
 };
 
+&gpu_zap_shader {
+	firmware-name = "qcom/msm8953/lenovo/kuntao/a506_zap.mdt";
+};
+
 &hsusb_phy {
 	vdd-supply = <&pm8953_l3>;
 	vdda-pll-supply = <&pm8953_l7>;

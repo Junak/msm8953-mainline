@@ -181,6 +181,10 @@
 	};
 };
 
+&gpu_zap_shader {
+	firmware-name = "qcom/msm8953/xiaomi/vince/a506_zap.mdt";
+};
+
 &i2c_3 {
 	touchscreen@1 {
 		compatible = "novatek,nt36672a-ts";

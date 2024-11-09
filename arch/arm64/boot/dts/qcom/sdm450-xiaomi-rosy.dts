@@ -142,6 +142,10 @@
 	touchscreen-size-y = <1440>;
 };
 
+&gpu_zap_shader {
+	firmware-name = "qcom/msm8953/xiaomi/rosy/a506_zap.mdt";
+};
+
 &panel {
 	compatible = "xiaomi,rosy-panel";
 };

@@ -95,6 +95,10 @@
 	};
 };
 
+&gpu_zap_shader {
+	firmware-name = "qcom/msm8953/xiaomi/onclite/a506_zap.mdt";
+};
+
 &mdss_dsi0 {
 	vdda-supply = <&pm8953_s3>;
 	vddio-supply = <&pm8953_l6>;
