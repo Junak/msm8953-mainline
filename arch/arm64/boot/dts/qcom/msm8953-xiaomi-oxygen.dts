@@ -1,0 +1,203 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2025, Barnabas Czeman
+ */
+/dts-v1/;
+
+#include "msm8953-xiaomi-common.dtsi"
+
+/delete-node/ &qseecom_mem;
+/delete-node/ &wcnss_fw_mem;
+/delete-node/ &adsp_fw_mem;
+
+/ {
+	model = "Xiaomi Mi Max 2";
+	compatible = "xiaomi,oxygen", "qcom,msm8953";
+	qcom,board-id = <26 0>;
+
+	chosen {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		framebuffer0: framebuffer@90001000 {
+			compatible = "simple-framebuffer";
+			reg = <0 0x90001000 0 (1920 * 1080 * 3)>;
+
+			vsp-supply = <&lab>;
+			vsn-supply = <&ibb>;
+
+			width = <1080>;
+			height = <1920>;
+			stride = <(1080 * 3)>;
+			format = "r8g8b8";
+
+			power-domains = <&gcc MDSS_GDSC>;
+
+			clocks = <&gcc GCC_MDSS_AHB_CLK>,
+				 <&gcc GCC_MDSS_AXI_CLK>,
+				 <&gcc GCC_MDSS_VSYNC_CLK>,
+				 <&gcc GCC_MDSS_MDP_CLK>,
+				 <&gcc GCC_MDSS_BYTE0_CLK>,
+				 <&gcc GCC_MDSS_PCLK0_CLK>,
+				 <&gcc GCC_MDSS_ESC0_CLK>;
+		};
+	};
+
+	gpio-keys {
+		pinctrl-0 = <&gpio_key_default>;
+		pinctrl-names = "default";
+	};
+
+	reserved-memory {
+		cont_splash_mem: cont-splash@90001000 {
+			reg = <0 0x90001000 0 (1080 * 1920 * 3)>;
+			no-map;
+		};
+
+		qseecom_mem: qseecom@84a00000 {
+			reg = <0x0 0x84a00000 0x0 0x1900000>;
+			no-map;
+		};
+
+		adsp_fw_mem: adsp@8d600000 {
+			reg = <0x0 0x8d600000 0x0 0x1200000>;
+			no-map;
+		};
+
+		wcnss_fw_mem: wcnss@8e800000 {
+			reg = <0x0 0x8e800000 0x0 0x700000>;
+			no-map;
+		};
+	};
+
+	tp1v8_vreg: tp1v8_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "tp1v8_vreg";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		gpio = <&tlmm 61 GPIO_ACTIVE_HIGH>;
+		startup-delay-us = <5000>;
+		enable-active-high;
+	};
+
+	tp2v8_vreg: tp2v8_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "tp2v8_vreg";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		gpio = <&tlmm  128 GPIO_ACTIVE_HIGH>;
+		startup-delay-us = <5000>;
+		enable-active-high;
+	};
+};
+
+&aw2013_led {
+	status = "okay";
+};
+
+&battery {
+	charge-full-design-microamp-hours = <5300000>;
+	constant-charge-current-max-microamp = <1000000>;
+	voltage-min-design-microvolt = <3400000>;
+	voltage-max-design-microvolt = <4380000>;
+};
+
+&ft5406_ts {
+	iovcc-supply = <&tp1v8_vreg>;
+	vcc-supply = <&tp2v8_vreg>;
+	touchscreen-size-x = <1080>;
+	touchscreen-size-y = <1920>;
+	status = "okay";
+};
+
+&gpu_zap_shader {
+	firmware-name = "qcom/msm8953/xiaomi/oxygen/a506_zap.mdt";
+};
+
+&mdss_dsi0 {
+	vdda-supply = <&pm8953_s3>;
+	vddio-supply = <&pm8953_l6>;
+
+	pinctrl-0 = <&mdss_dsi_default>;
+	pinctrl-1 = <&mdss_dsi_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	status = "okay";
+
+	panel@0 {
+		compatible = "xiaomi,oxygen-panel";
+		reg = <0>;
+
+		backlight = <&pmi8950_wled>;
+
+		reset-gpios = <&tlmm 35 GPIO_ACTIVE_LOW>;
+
+		vsp-supply = <&lab>;
+		vsn-supply = <&ibb>;
+
+		port {
+			panel_in: endpoint {
+				remote-endpoint = <&mdss_dsi0_out>;
+			};
+		};
+	};
+};
+
+&pmi8950_wled {
+	qcom,switching-freq = <600>;
+	qcom,cabc;
+	status = "okay";
+};
+
+&sound_card {
+	model = "xiaomi-oxygen";
+
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&cdc_pdm_lines_act
+		&cdc_pdm_lines_2_act
+		&cdc_pdm_comp_lines_act
+		&tlmm_pri_act>;
+	pinctrl-1 = <&cdc_pdm_lines_sus
+		&cdc_pdm_lines_2_sus
+		&cdc_pdm_comp_lines_sus
+		&tlmm_pri_sus>;
+
+	status = "okay";
+};
+
+&tlmm {
+	gpio-reserved-ranges = <0 4>, <135 4>;
+
+	tlmm_pri_act: pri-tlmm-state {
+		pins = "gpio88", "gpio91", "gpio93", "gpio94", "gpio95";
+		function = "pri_mi2s";
+		drive-strength = <8>;
+		bias-disable;
+	};
+
+	tlmm_pri_sus: pri-tlmm-state {
+		pins = "gpio88", "gpio91", "gpio93", "gpio94", "gpio95";
+		function = "pri_mi2s";
+		drive-strength = <2>;
+		bias-pull-down;
+	};
+
+	mdss_dsi_default: mdss-dsi-default-state {
+		pins = "gpio35";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-disable;
+	};
+
+	mdss_dsi_sleep: mdss-dsi-sleep-default {
+		pins = "gpio35";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+	};
+};
+
+&wcnss_ctrl {
+	firmware-name = "qcom/msm8953/xiaomi/oxygen/WCNSS_qcom_wlan_nv.bin";
+};
