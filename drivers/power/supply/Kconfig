@@ -45,6 +45,14 @@ config GENERIC_ADC_BATTERY
 	  Say Y here to enable support for the generic battery driver
 	  which uses IIO framework to read adc.
 
+config SM5708_POWER
+	tristate "Siliconmitus SM5708 PMIC support"
+	depends on I2C
+	depends on OF
+	select REGMAP_I2C
+	help
+	  Say Y here to enable support for the SM5708 PMIC.
+
 config IP5XXX_POWER
 	tristate "Injoinic IP5xxx power bank IC driver"
 	depends on I2C
