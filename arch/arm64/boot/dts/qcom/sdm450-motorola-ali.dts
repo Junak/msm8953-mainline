@@ -167,10 +167,12 @@
 		reg = <0x38>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <65 IRQ_TYPE_EDGE_FALLING>;
-		vcc-supply = <&pm8953_l10>;
 
+		vcc-supply = <&pm8953_l10>;
+		iovcc-supply = <&pm8953_l6>;
+
+		pinctrl-0 = <&ts_reset_default &ts_int_default>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&ts_int_active &ts_reset_active>;
 
 		reset-gpios = <&tlmm 64 GPIO_ACTIVE_LOW>;
 		touchscreen-size-x = <1080>;
@@ -359,17 +361,18 @@
 		bias-pull-down;
 	};
 
-	ts_int_active: ts-int-active-state {
+	ts_int_default: ts-int-default-state {
 		pins = "gpio65";
 		function = "gpio";
-		drive-strength = <8>;
-		bias-pull-up;
+		drive-strength = <16>;
+		input-enable;
+		bias-disable;
 	};
 
-	ts_reset_active: ts-reset-active-state {
+	ts_reset_default: ts-reset-default-state {
 		pins = "gpio64";
 		function = "gpio";
-		drive-strength = <0x08>;
+		drive-strength = <8>;
 		bias-pull-up;
 	};
 };
