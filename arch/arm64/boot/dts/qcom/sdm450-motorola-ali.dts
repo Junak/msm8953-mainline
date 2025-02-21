@@ -343,6 +343,10 @@
 	status = "okay";
 };
 
+&atc_leds {
+	status = "okay";
+};
+
 &tlmm {
 	gpio-reserved-ranges = <95 5>, <111 1>, <126 1>;
 
