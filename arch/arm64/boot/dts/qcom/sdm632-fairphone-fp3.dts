@@ -373,5 +373,5 @@
 };
 
 &zap_shader {
-	firmware-name = "qcom/msm8953/fairphone/fp3/a506_zap.mdt";
+	firmware-name = "qcom/msm8953/fairphone/fp3/a506_zap.mbn";
 };
