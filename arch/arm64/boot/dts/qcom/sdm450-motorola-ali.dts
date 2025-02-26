@@ -122,9 +122,9 @@
 		vsn-supply = <&ibb_vreg>;
 		reset-gpios = <&tlmm 61 GPIO_ACTIVE_LOW>;
 
-		pinctrl-names = "default";
 		pinctrl-0 = <&pmx_mdss_default>;
 		pinctrl-1 = <&pmx_mdss_sleep>;
+		pinctrl-names = "default";
 
 		port {
 			panel_in: endpoint {
@@ -348,9 +348,9 @@
 
 	cd-gpios = <&tlmm 133 GPIO_ACTIVE_LOW>;
 
-	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on &sdc2_cd_off>;
 	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_off>;
+	pinctrl-names = "default", "sleep";
 
 	status = "okay";
 };
