@@ -55,6 +55,52 @@
 		regulator-always-on;
 		regulator-boot-on;
 	};
+
+	i2c-gpio {
+		compatible = "i2c-gpio";
+		sda-gpios = <&tlmm 14 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&tlmm 15 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+		i2c-gpio,delay-us = <2>; /* ~100 kHz */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ak09918: magnetometer@c {
+			compatible = "asahi-kasei,ak09918";
+			reg = <0x0c>;
+
+			vdd-supply = <&pm8953_l10>;
+			vid-supply = <&pm8953_l6>;
+		};
+	};
+
+	spi6-gpio {
+		compatible = "spi-gpio";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		sck-gpios = <&tlmm 23 GPIO_ACTIVE_HIGH>;
+		mosi-gpios = <&tlmm 20 GPIO_ACTIVE_HIGH>;
+		miso-gpios = <&tlmm 21 GPIO_ACTIVE_HIGH>;
+		num-chipselects = <1>;
+		cs-gpios = <&tlmm 22 GPIO_ACTIVE_LOW>;
+
+		imu@0 {
+			compatible = "bosch,bmi160";
+			reg = <0>;
+			spi-max-frequency = <10000000>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <42 IRQ_TYPE_EDGE_RISING>,
+			<45 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "INT1", "INT2";
+
+			vdd-supply = <&pm8953_l10>;
+			vddio-supply = <&pm8953_l6>;
+
+			mount-matrix = "0", "1", "0",
+					"1", "0", "0",
+					"0", "0", "1";
+		};
+	};
 };
 
 &mdss {
@@ -76,9 +122,9 @@
 		vsn-supply = <&ibb_vreg>;
 		reset-gpios = <&tlmm 61 GPIO_ACTIVE_LOW>;
 
-		pinctrl-names = "default";
 		pinctrl-0 = <&pmx_mdss_default>;
 		pinctrl-1 = <&pmx_mdss_sleep>;
+		pinctrl-names = "default";
 
 		port {
 			panel_in: endpoint {
@@ -121,10 +167,12 @@
 		reg = <0x38>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <65 IRQ_TYPE_EDGE_FALLING>;
-		vcc-supply = <&pm8953_l10>;
 
+		vcc-supply = <&pm8953_l10>;
+		iovcc-supply = <&pm8953_l6>;
+
+		pinctrl-0 = <&ts_reset_default &ts_int_default>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&ts_int_active &ts_reset_active>;
 
 		reset-gpios = <&tlmm 64 GPIO_ACTIVE_LOW>;
 		touchscreen-size-x = <1080>;
@@ -140,6 +188,18 @@
 &pmi8950_fg {
 	monitored-battery = <&battery>;
 	power-supplies = <&pmi8950_smbcharger>;
+	status = "okay";
+};
+
+&pmi8950_haptics {
+	qcom,actuator-type = <HAP_TYPE_LRA>;
+	qcom,auto-res-mode = <HAP_AUTO_RES_NONE>;
+	qcom,brake-pattern = <0x3 0x3 0x2 0x0>;
+	qcon,play-mode = <HAP_PLAY_DIRECT>;
+	qcom,vmax-millivolt = <2500>;
+	qcom,wave-play-rate-us = <4255>;
+	qcom,wave-shape = <HAP_WAVE_SINE>;
+
 	status = "okay";
 };
 
@@ -288,10 +348,14 @@
 
 	cd-gpios = <&tlmm 133 GPIO_ACTIVE_LOW>;
 
-	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on &sdc2_cd_off>;
 	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_off>;
+	pinctrl-names = "default", "sleep";
 
+	status = "okay";
+};
+
+&atc_leds {
 	status = "okay";
 };
 
@@ -313,17 +377,18 @@
 		bias-pull-down;
 	};
 
-	ts_int_active: ts-int-active-state {
+	ts_int_default: ts-int-default-state {
 		pins = "gpio65";
 		function = "gpio";
-		drive-strength = <8>;
-		bias-pull-up;
+		drive-strength = <16>;
+		input-enable;
+		bias-disable;
 	};
 
-	ts_reset_active: ts-reset-active-state {
+	ts_reset_default: ts-reset-default-state {
 		pins = "gpio64";
 		function = "gpio";
-		drive-strength = <0x08>;
+		drive-strength = <8>;
 		bias-pull-up;
 	};
 };

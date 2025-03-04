@@ -95,6 +95,7 @@
 #define BMI160_ACCEL_PMU_MIN_USLEEP	3800
 #define BMI160_GYRO_PMU_MIN_USLEEP	80000
 #define BMI160_SOFTRESET_USLEEP		1000
+#define BMI160_SPI_MODE_CHANGE_USLEEP	1000
 
 #define BMI160_CHANNEL(_type, _axis, _index) {			\
 	.type = _type,						\
@@ -736,6 +737,7 @@ static int bmi160_chip_init(struct bmi160_data *data, bool use_spi)
 		ret = regmap_read(data->regmap, BMI160_REG_DUMMY, &val);
 		if (ret)
 			goto disable_regulator;
+		usleep_range(BMI160_SPI_MODE_CHANGE_USLEEP, BMI160_SPI_MODE_CHANGE_USLEEP + 1);
 	}
 
 	ret = regmap_read(data->regmap, BMI160_REG_CHIP_ID, &val);
