@@ -1084,7 +1084,6 @@ err:
 	put_acc_dev(dev);
 	return value;
 }
-EXPORT_SYMBOL_GPL(acc_ctrlrequest);
 
 int acc_ctrlrequest_composite(struct usb_composite_dev *cdev,
 			      const struct usb_ctrlrequest *ctrl)
@@ -1104,7 +1103,6 @@ int acc_ctrlrequest_composite(struct usb_composite_dev *cdev,
 	}
 	return acc_ctrlrequest(cdev, ctrl);
 }
-EXPORT_SYMBOL_GPL(acc_ctrlrequest_composite);
 
 static int
 __acc_function_bind(struct usb_configuration *c,
@@ -1449,7 +1447,6 @@ void acc_disconnect(void)
 	kill_all_hid_devices(dev);
 	put_acc_dev(dev);
 }
-EXPORT_SYMBOL_GPL(acc_disconnect);
 
 static void acc_cleanup(void)
 {
@@ -1570,5 +1567,27 @@ static struct usb_function *acc_alloc(struct usb_function_instance *fi)
 
 	return &dev->function;
 }
-DECLARE_USB_FUNCTION_INIT(accessory, acc_alloc_inst, acc_alloc);
+
+extern void register_acc_handlers(
+	int (*ctrlrequest_handler)(struct usb_composite_dev *cdev, const struct usb_ctrlrequest *ctrl),
+	void (*disconnect_handler)(void)
+);
+
+DECLARE_USB_FUNCTION(accessory, acc_alloc_inst, acc_alloc);
+
+static int __init accessory_mod_init(void)
+{
+	register_acc_handlers(acc_ctrlrequest_composite, acc_disconnect);
+	return usb_function_register(&accessoryusb_func);
+}
+
+static void __exit accessory_mod_exit(void)
+{
+	register_acc_handlers(NULL, NULL);
+	usb_function_unregister(&accessoryusb_func);
+}
+
+module_init(accessory_mod_init);
+module_exit(accessory_mod_exit);
+
 MODULE_LICENSE("GPL");

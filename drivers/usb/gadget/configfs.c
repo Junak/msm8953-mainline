@@ -18,9 +18,18 @@
 #include <linux/usb/ch9.h>
 
 #ifdef CONFIG_USB_CONFIGFS_F_ACC
-extern int acc_ctrlrequest_composite(struct usb_composite_dev *cdev,
-				const struct usb_ctrlrequest *ctrl);
-void acc_disconnect(void);
+int (*acc_ctrlrequest_composite)(struct usb_composite_dev *cdev, const struct usb_ctrlrequest *ctrl) = NULL;
+void (*acc_disconnect)(void) = NULL;
+
+void register_acc_handlers(
+	int (*ctrlrequest_handler)(struct usb_composite_dev *cdev, const struct usb_ctrlrequest *ctrl),
+	void (*disconnect_handler)(void)
+) {
+	acc_ctrlrequest_composite = ctrlrequest_handler;
+	acc_disconnect = disconnect_handler;
+}
+EXPORT_SYMBOL_GPL(register_acc_handlers);
+
 #endif
 static struct class *android_class;
 static struct device *android_device;
@@ -1962,7 +1971,7 @@ static int android_setup(struct usb_gadget *gadget,
 	}
 
 #ifdef CONFIG_USB_CONFIGFS_F_ACC
-	if (value < 0)
+	if (value < 0 && acc_ctrlrequest_composite != NULL)
 		value = acc_ctrlrequest_composite(cdev, c);
 #endif
 
@@ -2024,7 +2033,9 @@ static void configfs_composite_disconnect(struct usb_gadget *gadget)
 	 * accessory function is not actually enabled,
 	 * so we need to inform it when we are disconnected.
 	 */
-	acc_disconnect();
+	if (acc_disconnect != NULL) {
+		acc_disconnect();
+	}
 #endif
 	gi = container_of(cdev, struct gadget_info, cdev);
 	spin_lock_irqsave(&gi->spinlock, flags);
