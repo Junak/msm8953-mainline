@@ -229,6 +229,17 @@
 	status = "okay";
 };
 
+&spi_5 {
+	status = "okay";
+
+	irled@1 {
+		compatible = "ir-spi-led";
+		reg = <1>;
+		spi-cpol;
+		spi-max-frequency = <50000000>;
+	};
+};
+
 &wcd_codec {
 	qcom,micbias2-ext-cap;
 	qcom,mbhc-vthreshold-high = <100 200 450 500 500>;
