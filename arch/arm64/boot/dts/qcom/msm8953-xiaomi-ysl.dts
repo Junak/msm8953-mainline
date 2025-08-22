@@ -231,6 +231,13 @@
 
 &spi_5 {
 	status = "okay";
+
+	irled@1 {
+		compatible = "ir-spi-led";
+		reg = <1>;
+		spi-cpol;
+		spi-max-frequency = <50000000>;
+	};
 };
 
 &wcd_codec {
