@@ -973,7 +973,7 @@ static void acc_complete_setup_noop(struct usb_ep *ep, struct usb_request *req)
 	 */
 }
 
-int acc_ctrlrequest(struct usb_composite_dev *cdev,
+static int acc_ctrlrequest(struct usb_composite_dev *cdev,
 				const struct usb_ctrlrequest *ctrl)
 {
 	struct acc_dev	*dev = get_acc_dev();
@@ -1085,7 +1085,7 @@ err:
 	return value;
 }
 
-int acc_ctrlrequest_composite(struct usb_composite_dev *cdev,
+static int acc_ctrlrequest_composite(struct usb_composite_dev *cdev,
 			      const struct usb_ctrlrequest *ctrl)
 {
 	u16 w_length = le16_to_cpu(ctrl->wLength);
@@ -1436,7 +1436,7 @@ err_free_dev:
 	return ret;
 }
 
-void acc_disconnect(void)
+static void acc_disconnect(void)
 {
 	struct acc_dev *dev = get_acc_dev();
 
@@ -1540,7 +1540,7 @@ static void acc_free(struct usb_function *f)
 	put_acc_dev(dev);
 }
 
-int acc_ctrlrequest_configfs(struct usb_function *f,
+static int acc_ctrlrequest_configfs(struct usb_function *f,
 			const struct usb_ctrlrequest *ctrl) {
 	if (f->config != NULL && f->config->cdev != NULL)
 		return acc_ctrlrequest(f->config->cdev, ctrl);
