@@ -1005,13 +1005,13 @@ struct hfi_uncompressed_plane_constraints {
 struct hfi_uncompressed_plane_info {
 	u32 format;
 	u32 num_planes;
-	struct hfi_uncompressed_plane_constraints plane_constraints;
+	struct hfi_uncompressed_plane_constraints plane_constraints[];
 };
 
 struct hfi_uncompressed_format_supported {
 	u32 buffer_type;
 	u32 format_entries;
-	struct hfi_uncompressed_plane_info plane_info;
+	struct hfi_uncompressed_plane_info plane_info[];
 };
 
 struct hfi_uncompressed_plane_actual {
