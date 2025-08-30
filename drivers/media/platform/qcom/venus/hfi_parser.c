@@ -373,6 +373,12 @@ u32 hfi_parser(struct venus_core *core, struct venus_inst *inst, void *buf,
 
 			ret = parse_alloc_mode(core, codecs, domain, payload);
 			break;
+		case HFI_PROPERTY_PARAM_INTERLACE_FORMAT_SUPPORTED:
+			ret = sizeof(struct hfi_interlace_format_supported);
+			break;
+		case HFI_PROPERTY_PARAM_MAX_SEQUENCE_HEADER_SIZE:
+			ret = sizeof(struct hfi_seq_header_info);
+			break;
 		default:
 			dev_warn_once(core->dev, "Unsupported property: %x\n", property);
 			ret = 0;
