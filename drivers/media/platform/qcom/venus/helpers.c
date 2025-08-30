@@ -1480,6 +1480,12 @@ int venus_helper_vb2_buf_prepare(struct vb2_buffer *vb)
 	    vb2_plane_size(vb, 0) < inst->input_buf_size)
 		return -EINVAL;
 
+	if (!is_dynamic_bufmode(inst) &&
+	    (inst->streamon_out && inst->streamon_cap) &&
+	    (vb->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) &&
+	    vb->index >= inst->num_output_bufs)
+		return -EBUSY;
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(venus_helper_vb2_buf_prepare);
