@@ -8,13 +8,14 @@
 #include <linux/module.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
+#include <linux/mutex.h>
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/regmap.h>
 #include <linux/types.h>
+#include <linux/wait.h>
 #include <linux/workqueue.h>
-#include <linux/spinlock.h>
 
 /* SOC */
 #define BATT_MONOTONIC_SOC		0x009
@@ -57,7 +58,7 @@
 #define RIF_MEM_ACCESS_REQ		BIT(7)
 
 #define MEM_IF_TIMEOUT_MS		5000
-#define SRAM_ACCESS_RELEASE_DELAY_MS	500
+#define SRAM_ACCESS_RELEASE_DELAY_MS	100
 
 struct qcom_fg_sram_regs {
 	const unsigned int cfg;
@@ -95,15 +96,13 @@ struct qcom_fg_chip {
 	struct power_supply_battery_info *batt_info;
 	struct power_supply *chg_psy;
 	int status;
+	struct mutex lock;
 
 	const struct qcom_fg_sram_regs *sram_regs;
-	struct completion sram_access_granted;
-	struct completion sram_access_revoked;
+	struct wait_queue_head sram_waitq;
+	bool no_delayed_release;
 	struct workqueue_struct *sram_wq;
 	struct delayed_work sram_release_access_work;
-	spinlock_t sram_request_lock;
-	spinlock_t sram_rw_lock;
-	int sram_requests;
 };
 
 /************************
@@ -223,110 +222,65 @@ static bool qcom_fg_sram_check_access(struct qcom_fg_chip *chip)
  */
 static int qcom_fg_sram_request_access(struct qcom_fg_chip *chip)
 {
-	unsigned long flags;
 	bool sram_accessible;
 	int ret;
 
-	spin_lock_irqsave(&chip->sram_request_lock, flags);
+	cancel_delayed_work_sync(&chip->sram_release_access_work);
 
 	sram_accessible = qcom_fg_sram_check_access(chip);
 
-	dev_vdbg(chip->dev, "Requesting SRAM access, current state: %d, requests: %d\n",
-		sram_accessible, chip->sram_requests);
-
-	if (!sram_accessible && chip->sram_requests == 0) {
+	if (!sram_accessible) {
+		dev_vdbg(chip->dev, "Requesting SRAM access\n");
 		ret = qcom_fg_masked_write(chip, chip->sram_regs->cfg,
 				RIF_MEM_ACCESS_REQ, RIF_MEM_ACCESS_REQ);
 		if (ret) {
 			dev_err(chip->dev,
 				"Failed to set SRAM access request bit: %d\n", ret);
-
-			spin_unlock(&chip->sram_request_lock);
 			return ret;
 		}
 	}
 
-	chip->sram_requests++;
+	ret = wait_event_timeout(chip->sram_waitq,
+				qcom_fg_sram_check_access(chip),
+				msecs_to_jiffies(MEM_IF_TIMEOUT_MS));
 
-	spin_unlock_irqrestore(&chip->sram_request_lock, flags);
-
-	/* Wait to get access to SRAM, and try again if interrupted */
-	do {
-		ret = wait_for_completion_interruptible_timeout(
-			&chip->sram_access_granted,
-			msecs_to_jiffies(MEM_IF_TIMEOUT_MS));
-	} while(ret == -ERESTARTSYS);
-
-	if (ret <= 0) {
-		ret = -ETIMEDOUT;
-
-		spin_lock(&chip->sram_request_lock);
-		chip->sram_requests--;
-		spin_unlock(&chip->sram_request_lock);
-	} else {
-		ret = 0;
-
-		reinit_completion(&chip->sram_access_revoked);
-	}
-
-	return ret;
+	return ret <= 0 ? -ETIMEDOUT : 0;
 }
 
 /**
  * @brief qcom_fg_sram_release_access() - Release access to SRAM
  *
  * @param chip Pointer to chip
+ * @param immediate forbid deferred SRAM release
  * @return int 0 on success, negative errno on error
  */
-static void qcom_fg_sram_release_access(struct qcom_fg_chip *chip)
+static void qcom_fg_sram_release_access(struct qcom_fg_chip *chip, bool immediate)
 {
-	spin_lock(&chip->sram_request_lock);
+	int ret;
 
-	chip->sram_requests--;
+	if (!chip->no_delayed_release && !immediate) {
+		mod_delayed_work(chip->sram_wq, &chip->sram_release_access_work,
+				msecs_to_jiffies(SRAM_ACCESS_RELEASE_DELAY_MS));
+		return;
+	}
 
-	if(WARN(chip->sram_requests < 0,
-			"sram_requests=%d, cannot be negative! resetting to 0.\n",
-			chip->sram_requests))
-		chip->sram_requests = 0;
+	qcom_fg_masked_write(chip, chip->sram_regs->cfg, RIF_MEM_ACCESS_REQ, 0);
 
-	if(chip->sram_requests == 0)
-		/* Schedule access release */
-		queue_delayed_work(chip->sram_wq, &chip->sram_release_access_work,
-			msecs_to_jiffies(SRAM_ACCESS_RELEASE_DELAY_MS));
-
-	spin_unlock(&chip->sram_request_lock);
+	ret = wait_event_timeout(chip->sram_waitq,
+				!qcom_fg_sram_check_access(chip),
+				secs_to_jiffies(MEM_IF_TIMEOUT_MS));
+	if (ret <= 0)
+		dev_err(chip->dev, "SRAM release timeout\n");
 }
 
 static void qcom_fg_sram_release_access_worker(struct work_struct *work)
 {
-	struct qcom_fg_chip *chip;
-	unsigned long flags;
-	bool wait = false;
-	int ret;
+	struct qcom_fg_chip *chip= container_of(work,
+			struct qcom_fg_chip, sram_release_access_work.work);
 
-	chip = container_of(work, struct qcom_fg_chip, sram_release_access_work.work);
-
-	spin_lock_irqsave(&chip->sram_request_lock, flags);
-
-	/* Request access release if there are still no access requests */
-	if(chip->sram_requests == 0) {
-		qcom_fg_masked_write(chip, chip->sram_regs->cfg, RIF_MEM_ACCESS_REQ, 0);
-		wait = true;
-	}
-
-	spin_unlock_irqrestore(&chip->sram_request_lock, flags);
-
-	if(!wait)
-		return;
-
-	/* Wait for SRAM access to be released, and try again if interrupted */
-	do {
-		ret = wait_for_completion_interruptible_timeout(
-			&chip->sram_access_revoked,
-			msecs_to_jiffies(MEM_IF_TIMEOUT_MS));
-	} while(ret == -ERESTARTSYS);
-
-	reinit_completion(&chip->sram_access_granted);
+	mutex_lock(&chip->lock);
+	qcom_fg_sram_release_access(chip, true);
+	mutex_unlock(&chip->lock);
 }
 
 /**
@@ -377,8 +331,6 @@ static int qcom_fg_sram_read(struct qcom_fg_chip *chip,
 		return ret;
 	}
 
-	spin_lock(&chip->sram_rw_lock);
-
 	dev_vdbg(chip->dev,
 		"Reading address 0x%x with offset %d of length %d from SRAM",
 		addr, len, offset);
@@ -411,8 +363,7 @@ static int qcom_fg_sram_read(struct qcom_fg_chip *chip,
 		offset = 0;
 	}
 out:
-	spin_unlock(&chip->sram_rw_lock);
-	qcom_fg_sram_release_access(chip);
+	qcom_fg_sram_release_access(chip, false);
 
 	return ret;
 }
@@ -437,8 +388,6 @@ static int qcom_fg_sram_write(struct qcom_fg_chip *chip,
 		dev_err(chip->dev, "Failed to request SRAM access: %d", ret);
 		return ret;
 	}
-
-	spin_lock(&chip->sram_rw_lock);
 
 	dev_vdbg(chip->dev,
 		"Wrtiting address 0x%x with offset %d of length %d to SRAM",
@@ -472,8 +421,7 @@ static int qcom_fg_sram_write(struct qcom_fg_chip *chip,
 		offset = 0;
 	}
 out:
-	spin_unlock(&chip->sram_rw_lock);
-	qcom_fg_sram_release_access(chip);
+	qcom_fg_sram_release_access(chip, false);
 
 	return ret;
 }
@@ -822,14 +770,16 @@ static int qcom_fg_get_property(struct power_supply *psy,
 	struct qcom_fg_chip *chip = power_supply_get_drvdata(psy);
 	int ret = 0;
 
-	dev_dbg(chip->dev, "Getting property: %d", psp);
+	dev_vdbg(chip->dev, "Getting property: %d", psp);
+
+	mutex_lock(&chip->lock);
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
 	case POWER_SUPPLY_PROP_HEALTH:
 		/* Get property from charger */
-		ret = power_supply_get_property(chip->chg_psy, psp, val);
-		break;
+		mutex_unlock(&chip->lock);
+		return power_supply_get_property(chip->chg_psy, psp, val);
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
 		break;
@@ -862,8 +812,10 @@ static int qcom_fg_get_property(struct power_supply *psy,
 		break;
 	default:
 		dev_err(chip->dev, "invalid property: %d\n", psp);
-		return -EINVAL;
+		ret = -EINVAL;
 	}
+
+	mutex_unlock(&chip->lock);
 
 	return ret;
 }
@@ -985,7 +937,7 @@ static int qcom_fg_clear_ima(struct qcom_fg_chip *chip,
 	return 0;
 }
 
-irqreturn_t qcom_fg_handle_soc_delta(int irq, void *data)
+static irqreturn_t qcom_fg_handle_soc_delta(int irq, void *data)
 {
 	struct qcom_fg_chip *chip = data;
 
@@ -996,17 +948,12 @@ irqreturn_t qcom_fg_handle_soc_delta(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-irqreturn_t qcom_fg_handle_mem_avail(int irq, void *data)
+static irqreturn_t qcom_fg_handle_mem_avail(int irq, void *data)
 {
 	struct qcom_fg_chip *chip = data;
 
-	if (qcom_fg_sram_check_access(chip)) {
-		complete_all(&chip->sram_access_granted);
-		dev_dbg(chip->dev, "SRAM access granted");
-	} else {
-		complete_all(&chip->sram_access_revoked);
-		dev_dbg(chip->dev, "SRAM access revoked");
-	}
+	dev_vdbg(chip->dev, "MEM avail IRQ");
+	wake_up_all(&chip->sram_waitq);
 
 	return IRQ_HANDLED;
 }
@@ -1081,6 +1028,7 @@ static int qcom_fg_probe(struct platform_device *pdev)
 	data = of_device_get_match_data(&pdev->dev);
 	chip->ops = data->ops;
 	chip->sram_regs = data->sram_regs;
+	mutex_init(&chip->lock);
 
 	chip->regmap = dev_get_regmap(pdev->dev.parent, NULL);
 	if (!chip->regmap) {
@@ -1167,8 +1115,7 @@ static int qcom_fg_probe(struct platform_device *pdev)
 			return irq;
 		}
 
-		init_completion(&chip->sram_access_granted);
-		init_completion(&chip->sram_access_revoked);
+		init_waitqueue_head(&chip->sram_waitq);
 
 		chip->sram_wq = create_singlethread_workqueue("qcom_fg");
 		INIT_DELAYED_WORK(&chip->sram_release_access_work,
@@ -1181,10 +1128,6 @@ static int qcom_fg_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "Failed to request mem-avail IRQ: %d\n", ret);
 			return ret;
 		}
-
-		spin_lock_init(&chip->sram_request_lock);
-		spin_lock_init(&chip->sram_rw_lock);
-		chip->sram_requests = 0;
 	}
 
 	/* Set default temperature thresholds */
@@ -1253,6 +1196,31 @@ static void qcom_fg_remove(struct platform_device *pdev)
 		destroy_workqueue(chip->sram_wq);
 }
 
+static int qcom_fg_suspend(struct device *dev)
+{
+	struct qcom_fg_chip *chip = dev_get_drvdata(dev);
+
+	mutex_lock(&chip->lock);
+	chip->no_delayed_release = true;
+	mutex_unlock(&chip->lock);
+
+	/* Ensure SRAM access is released before suspend */
+	flush_delayed_work(&chip->sram_release_access_work);
+
+	return 0;
+}
+
+static int qcom_fg_resume(struct device *dev)
+{
+	struct qcom_fg_chip *chip = dev_get_drvdata(dev);
+
+	chip->no_delayed_release = false;
+
+	return 0;
+}
+
+DEFINE_SIMPLE_DEV_PM_OPS(qcom_fg_pm_ops, qcom_fg_suspend, qcom_fg_resume);
+
 static const struct of_device_id fg_match_id_table[] = {
 	{ .compatible = "qcom,pmi8994-fg", .data = &pmi8994_data },
 	{ .compatible = "qcom,pmi8996-fg", .data = &pmi8996_data },
@@ -1267,6 +1235,7 @@ static struct platform_driver qcom_fg_driver = {
 	.driver = {
 		.name = "qcom-fg",
 		.of_match_table = fg_match_id_table,
+		.pm = &qcom_fg_pm_ops,
 	},
 };
 
