@@ -12,7 +12,7 @@
 };
 
 &battery {
-	charge-full-design-microamp-hours = <2900000>;
+	charge-full-design-microamp-hours = <4900000>;
 };
 
 &sound_card {
