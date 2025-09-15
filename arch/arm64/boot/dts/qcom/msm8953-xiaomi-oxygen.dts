@@ -65,11 +65,11 @@
 			no-map;
 		};
 
-		ramoops@9ff00000 {
+		ramoops@b0000000 {
 			compatible = "ramoops";
-			reg = <0x0 0x9ff00000 0x0 0x00100000>;
-			record-size = <0x1000>;
-			console-size = <0x80000>;
+			reg = <0x0 0xb0000000 0x0 0x00400000>;
+			record-size = <0x20000>;
+			console-size = <0x200000>;
 			ftrace-size = <0x1000>;
 			pmsg-size = <0x8000>;
 		};
@@ -116,13 +116,27 @@
 
 &aw2013_led {
 	status = "okay";
+};
 
-	led@1 {
-		reg = <1>;
-		color = <LED_COLOR_ID_WHITE>;
-		function = LED_FUNCTION_KBD_BACKLIGHT;
-		led-max-microamp = <5000>;
-	};
+&i2c_2 {
+    smb1351_charger: charger@1d {
+        compatible = "summit,smb347";
+        reg = <0x1d>;
+        
+        interrupt-parent = <&tlmm>;
+	interrupts = <61 IRQ_TYPE_LEVEL_LOW>;
+		
+	monitored-battery = <&battery>;
+		
+	summit,enable-usb-charging;
+	summit,enable-otg-charging;
+	summit,enable-mains-charging;
+	summit,chip-temperature-threshold-celsius = <120>;
+	summit,usb-current-limit-microamp = <1500000>;
+	summit,mains-current-limit-microamp = <2000000>;
+        
+        status = "okay";
+    };
 };
 
 &battery {
@@ -135,7 +149,7 @@
 &pmi8950_haptics {
 	qcom,actuator-type = <HAP_TYPE_ERM>;
 	qcom,brake-pattern = <0x3 0x3 0x0 0x0>;
-	qcom,wave-play-rate-us = <5263>;
+	qcom,wave-play-rate-us = <5100>;
 	qcom,wave-shape = <HAP_WAVE_SQUARE>;
 
 	status = "okay";
