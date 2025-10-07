@@ -125,7 +125,6 @@ static const struct camss_subdev_resources ispif_res_8x16 = {
 	.clock = { "top_ahb", "ahb", "ispif_ahb",
 		   "csi0", "csi0_pix", "csi0_rdi",
 		   "csi1", "csi1_pix", "csi1_rdi" },
-	.clock_for_reset = { "vfe0", "csi_vfe0" },
 	.reg = { "ispif", "csi_clk_mux" },
 	.interrupt = { "ispif" },
 };
@@ -272,7 +271,6 @@ static const struct camss_subdev_resources ispif_res_8x39 = {
 		   "csi0", "csi0_pix", "csi0_rdi",
 		   "csi1", "csi1_pix", "csi1_rdi",
 		   "csi2", "csi2_pix", "csi2_rdi" },
-	.clock_for_reset = { "vfe0", "csi_vfe0" },
 	.reg = { "ispif", "csi_clk_mux" },
 	.interrupt = { "ispif" },
 };
@@ -388,7 +386,6 @@ static const struct camss_subdev_resources ispif_res_8x53 = {
 		   "csi0", "csi0_pix", "csi0_rdi",
 		   "csi1", "csi1_pix", "csi1_rdi",
 		   "csi2", "csi2_pix", "csi2_rdi" },
-	.clock_for_reset = { "vfe0", "csi_vfe0", "vfe1", "csi_vfe1" },
 	.reg = { "ispif", "csi_clk_mux" },
 	.interrupt = { "ispif" },
 };
@@ -623,7 +620,6 @@ static const struct camss_subdev_resources ispif_res_8x96 = {
 		   "csi1", "csi1_pix", "csi1_rdi",
 		   "csi2", "csi2_pix", "csi2_rdi",
 		   "csi3", "csi3_pix", "csi3_rdi" },
-	.clock_for_reset = { "vfe0", "csi_vfe0", "vfe1", "csi_vfe1" },
 	.reg = { "ispif", "csi_clk_mux" },
 	.interrupt = { "ispif" },
 };
@@ -1000,7 +996,6 @@ static const struct camss_subdev_resources ispif_res_660 = {
 		   "csi1", "csi1_pix", "csi1_rdi",
 		   "csi2", "csi2_pix", "csi2_rdi",
 		   "csi3", "csi3_pix", "csi3_rdi" },
-	.clock_for_reset = { "vfe0", "csi_vfe0", "vfe1", "csi_vfe1" },
 	.reg = { "ispif", "csi_clk_mux" },
 	.interrupt = { "ispif" },
 };
@@ -4323,28 +4318,6 @@ int camss_get_pixel_clock(struct media_entity *entity, u64 *pixel_clock)
 	*pixel_clock = v4l2_ctrl_g_ctrl_int64(ctrl);
 
 	return 0;
-}
-
-int camss_pm_domain_on(struct camss *camss, int id)
-{
-	int ret = 0;
-
-	if (id < camss->res->vfe_num) {
-		struct vfe_device *vfe = &camss->vfe[id];
-
-		ret = vfe->res->hw_ops->pm_domain_on(vfe);
-	}
-
-	return ret;
-}
-
-void camss_pm_domain_off(struct camss *camss, int id)
-{
-	if (id < camss->res->vfe_num) {
-		struct vfe_device *vfe = &camss->vfe[id];
-
-		vfe->res->hw_ops->pm_domain_off(vfe);
-	}
 }
 
 static int vfe_parent_dev_ops_get(struct camss *camss, int id)

@@ -1085,13 +1085,14 @@ static int vfe_check_clock_rates(struct vfe_device *vfe)
 	return 0;
 }
 
+
 /*
- * vfe_get - Power up and reset VFE module
+ * vfe_power_on - Power on VFE power resources
  * @vfe: VFE Device
  *
  * Return 0 on success or a negative error code otherwise
  */
-int vfe_get(struct vfe_device *vfe)
+int vfe_power_on(struct vfe_device *vfe)
 {
 	int ret;
 
@@ -1114,16 +1115,6 @@ int vfe_get(struct vfe_device *vfe)
 					  vfe->camss->dev);
 		if (ret < 0)
 			goto error_pm_runtime_get;
-
-		ret = vfe_reset(vfe);
-		if (ret < 0)
-			goto error_reset;
-
-		vfe_reset_output_maps(vfe);
-
-		vfe_init_outputs(vfe);
-
-		vfe->res->hw_ops->hw_version(vfe);
 	} else {
 		ret = vfe_check_clock_rates(vfe);
 		if (ret < 0)
@@ -1134,9 +1125,6 @@ int vfe_get(struct vfe_device *vfe)
 	mutex_unlock(&vfe->power_lock);
 
 	return 0;
-
-error_reset:
-	camss_disable_clocks(vfe->nclocks, vfe->clock);
 
 error_pm_runtime_get:
 	pm_runtime_put_sync(vfe->camss->dev);
@@ -1150,10 +1138,10 @@ error_pm_domain:
 }
 
 /*
- * vfe_put - Power down VFE module
+ * vfe_power_off - Power off VFE power resources
  * @vfe: VFE Device
  */
-void vfe_put(struct vfe_device *vfe)
+void vfe_power_off(struct vfe_device *vfe)
 {
 	mutex_lock(&vfe->power_lock);
 
@@ -1161,10 +1149,6 @@ void vfe_put(struct vfe_device *vfe)
 		dev_err(vfe->camss->dev, "vfe power off on power_count == 0\n");
 		goto exit;
 	} else if (vfe->power_count == 1) {
-		if (vfe->was_streaming) {
-			vfe->was_streaming = 0;
-			vfe->res->hw_ops->vfe_halt(vfe);
-		}
 		camss_disable_clocks(vfe->nclocks, vfe->clock);
 		pm_runtime_put_sync(vfe->camss->dev);
 		vfe->res->hw_ops->pm_domain_off(vfe);
@@ -1174,6 +1158,65 @@ void vfe_put(struct vfe_device *vfe)
 
 exit:
 	mutex_unlock(&vfe->power_lock);
+}
+
+/*
+ * vfe_get - Power up and reset VFE module
+ * @vfe: VFE Device
+ *
+ * Return 0 on success or a negative error code otherwise
+ */
+int vfe_get(struct vfe_device *vfe)
+{
+	int ret;
+
+	ret = vfe_power_on(vfe);
+	if (ret)
+		return ret;
+
+	mutex_lock(&vfe->enable_lock);
+	
+	if (vfe->enable_count == 0) {
+		ret = vfe_reset(vfe);
+		if (ret < 0) {
+			vfe_power_off(vfe);
+			goto exit;
+		}
+
+		vfe_reset_output_maps(vfe);
+
+		vfe_init_outputs(vfe);
+
+		vfe->res->hw_ops->hw_version(vfe);
+	}
+	vfe->enable_count++;
+exit:
+	mutex_unlock(&vfe->enable_lock);
+
+	return 0;
+}
+
+/*
+ * vfe_put - Power down VFE module
+ * @vfe: VFE Device
+ */
+void vfe_put(struct vfe_device *vfe)
+{
+	mutex_lock(&vfe->enable_lock);
+
+	if (vfe->power_count == 0) {
+		dev_err(vfe->camss->dev, "vfe enable_count == 0\n");
+		goto exit;
+	} else if (vfe->enable_count == 1 && vfe->was_streaming) {
+		vfe->was_streaming = 0;
+		vfe->res->hw_ops->vfe_halt(vfe);
+	}
+	vfe->enable_count--;
+
+exit:
+	mutex_unlock(&vfe->enable_lock);
+
+	vfe_power_off(vfe);
 }
 
 /*

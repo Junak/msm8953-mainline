@@ -321,30 +321,18 @@ static int ispif_vfe_reset(struct ispif_device *ispif, u8 vfe_id)
 static int ispif_reset(struct ispif_device *ispif, u8 vfe_id)
 {
 	struct camss *camss = ispif->camss;
+	struct vfe_device *vfe = &camss->vfe[vfe_id];
 	int ret;
 
-	ret = camss_pm_domain_on(camss, PM_DOMAIN_VFE0);
-	if (ret < 0)
-		return ret;
-
-	ret = camss_pm_domain_on(camss, PM_DOMAIN_VFE1);
-	if (ret < 0)
-		return ret;
-
-	ret = camss_enable_clocks(ispif->nclocks_for_reset,
-				  ispif->clock_for_reset,
-				  camss->dev);
-	if (ret < 0)
+	ret = vfe_power_on(vfe);
+	if (ret)
 		return ret;
 
 	ret = ispif_vfe_reset(ispif, vfe_id);
 	if (ret)
 		dev_dbg(camss->dev, "ISPIF Reset failed\n");
 
-	camss_disable_clocks(ispif->nclocks_for_reset, ispif->clock_for_reset);
-
-	camss_pm_domain_off(camss, PM_DOMAIN_VFE0);
-	camss_pm_domain_off(camss, PM_DOMAIN_VFE1);
+	vfe_power_off(vfe);
 
 	return ret;
 }
@@ -1198,28 +1186,6 @@ int msm_ispif_subdev_init(struct camss *camss,
 		struct camss_clock *clock = &ispif->clock[i];
 
 		clock->clk = devm_clk_get(dev, res->clock[i]);
-		if (IS_ERR(clock->clk))
-			return PTR_ERR(clock->clk);
-
-		clock->freq = NULL;
-		clock->nfreqs = 0;
-	}
-
-	ispif->nclocks_for_reset = 0;
-	while (res->clock_for_reset[ispif->nclocks_for_reset])
-		ispif->nclocks_for_reset++;
-
-	ispif->clock_for_reset = devm_kcalloc(dev,
-					      ispif->nclocks_for_reset,
-					      sizeof(*ispif->clock_for_reset),
-					      GFP_KERNEL);
-	if (!ispif->clock_for_reset)
-		return -ENOMEM;
-
-	for (i = 0; i < ispif->nclocks_for_reset; i++) {
-		struct camss_clock *clock = &ispif->clock_for_reset[i];
-
-		clock->clk = devm_clk_get(dev, res->clock_for_reset[i]);
 		if (IS_ERR(clock->clk))
 			return PTR_ERR(clock->clk);
 
