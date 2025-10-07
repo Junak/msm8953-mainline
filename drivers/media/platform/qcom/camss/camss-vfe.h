@@ -156,6 +156,8 @@ struct vfe_device {
 	struct completion halt_complete;
 	struct mutex power_lock;
 	int power_count;
+	struct mutex enable_lock;
+	int enable_count;
 	struct mutex stream_lock;
 	int stream_count;
 	spinlock_t output_lock;
@@ -249,6 +251,9 @@ extern const struct vfe_hw_ops vfe_ops_340;
 extern const struct vfe_hw_ops vfe_ops_480;
 extern const struct vfe_hw_ops vfe_ops_680;
 extern const struct vfe_hw_ops vfe_ops_gen3;
+
+int vfe_power_on(struct vfe_device *vfe);
+void vfe_power_off(struct vfe_device *vfe);
 
 int vfe_get(struct vfe_device *vfe);
 void vfe_put(struct vfe_device *vfe);

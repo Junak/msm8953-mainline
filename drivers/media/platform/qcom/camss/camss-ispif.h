@@ -54,8 +54,6 @@ struct ispif_device {
 	char irq_name[30];
 	struct camss_clock *clock;
 	int nclocks;
-	struct camss_clock  *clock_for_reset;
-	int nclocks_for_reset;
 	struct completion reset_complete[MSM_ISPIF_VFE_NUM];
 	int power_count;
 	struct mutex power_lock;
