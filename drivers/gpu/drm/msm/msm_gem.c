@@ -53,9 +53,11 @@ static void msm_gem_close(struct drm_gem_object *obj, struct drm_file *file)
 {
 	struct msm_context *ctx = file->driver_priv;
 	struct drm_exec exec;
+	int refcount;
 
 	update_ctx_mem(file, -obj->size);
 	msm_gem_vma_put(obj);
+	refcount = atomic_dec_return(&to_msm_bo(obj)->handle_count);
 
 	/*
 	 * If VM isn't created yet, nothing to cleanup.  And in fact calling
@@ -71,6 +73,9 @@ static void msm_gem_close(struct drm_gem_object *obj, struct drm_file *file)
 	 * is closed (see msm_gem_vm_close())
 	 */
 	if (msm_context_is_vmbind(ctx))
+		return;
+
+	if (!to_msm_vm(ctx->vm)->pid && refcount > 0)
 		return;
 
 	/*
@@ -1270,6 +1275,7 @@ static int msm_gem_new_impl(struct drm_device *dev, uint32_t flags,
 
 	msm_obj->flags = flags;
 	msm_obj->madv = MSM_MADV_WILLNEED;
+	atomic_set(&msm_obj->handle_count, 1);
 
 	INIT_LIST_HEAD(&msm_obj->node);
 
