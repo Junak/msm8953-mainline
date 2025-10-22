@@ -153,8 +153,6 @@
 					"otst2",
 					"otst3";
 			status = "disabled";
-
-			chg_otg: chg_otg {};
 		};
 
 		pmi8950_fg: fuel-gauge@4000 {

@@ -345,11 +345,6 @@
 	status = "okay";
 };
 
-&usb3_dwc3 {
-	/delete-property/ usb-role-switch;
-	dr_mode = "peripheral";
-};
-
 &wcnss {
 	status = "okay";
 	vddpx-supply = <&pm8953_l5>;

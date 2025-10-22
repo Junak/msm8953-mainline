@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: GPL-2.0
+
+&usb3 {
+	usb-psy-name = "qcom-smbchg-usb";
+};
+
+&usb_dwc3_hs {
+	remote-endpoint = <&conn_hs_ep>;
+};
+
+&pmi8950_smbcharger {
+	port {
+		conn_hs_ep: endpoint {
+			remote-endpoint = <&usb_dwc3_hs>;
+		};
+	};
+};
