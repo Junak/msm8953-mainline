@@ -504,10 +504,6 @@
 	status = "okay";
 };
 
-&usb3_dwc3 {
-	dr_mode = "peripheral";
-};
-
 &wcd_codec {
 	qcom,hphl-jack-type-normally-open;
 	qcom,mbhc-vthreshold-high = <87 120 215 400 410>;

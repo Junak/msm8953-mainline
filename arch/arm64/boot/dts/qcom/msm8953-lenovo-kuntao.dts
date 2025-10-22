@@ -354,10 +354,6 @@
 	status = "okay";
 };
 
-&usb3_dwc3 {
-	dr_mode = "peripheral";
-};
-
 &wcnss {
 	vddpx-supply = <&pm8953_l5>;
 
