@@ -56,6 +56,7 @@
 			clocks = <&apcscc APCS_CPU0_CLK>;
 			clock-names = "cpu";
 			next-level-cache = <&l2_0>;
+			operating-points-v2 = <&cpu_opp>;
 			power-domains = <&cpu_pd0>, <&cpr 0>;
 			power-domain-names = "psci", "perf";
 			#cooling-cells = <2>;
@@ -74,6 +75,7 @@
 			clocks = <&apcscc APCS_CPU0_CLK>;
 			clock-names = "cpu";
 			next-level-cache = <&l2_0>;
+			operating-points-v2 = <&cpu_opp>;
 			power-domains = <&cpu_pd1>, <&cpr 0>;
 			power-domain-names = "psci", "perf";
 			#cooling-cells = <2>;
@@ -92,6 +94,7 @@
 			clocks = <&apcscc APCS_CPU0_CLK>;
 			clock-names = "cpu";
 			next-level-cache = <&l2_0>;
+			operating-points-v2 = <&cpu_opp>;
 			power-domains = <&cpu_pd2>, <&cpr 0>;
 			power-domain-names = "psci", "perf";
 			#cooling-cells = <2>;
@@ -110,6 +113,7 @@
 			clocks = <&apcscc APCS_CPU0_CLK>;
 			clock-names = "cpu";
 			next-level-cache = <&l2_0>;
+			operating-points-v2 = <&cpu_opp>;
 			power-domains = <&cpu_pd3>, <&cpr 0>;
 			power-domain-names = "psci", "perf";
 			#cooling-cells = <2>;
@@ -128,6 +132,7 @@
 			clocks = <&apcscc APCS_CPU4_CLK>;
 			clock-names = "cpu";
 			next-level-cache = <&l2_1>;
+			operating-points-v2 = <&cpu_opp>;
 			power-domains = <&cpu_pd4>, <&cpr 0>;
 			power-domain-names = "psci", "perf";
 			#cooling-cells = <2>;
@@ -146,6 +151,7 @@
 			clocks = <&apcscc APCS_CPU4_CLK>;
 			clock-names = "cpu";
 			next-level-cache = <&l2_1>;
+			operating-points-v2 = <&cpu_opp>;
 			power-domains = <&cpu_pd5>, <&cpr 0>;
 			power-domain-names = "psci", "perf";
 			#cooling-cells = <2>;
@@ -164,6 +170,7 @@
 			clocks = <&apcscc APCS_CPU4_CLK>;
 			clock-names = "cpu";
 			next-level-cache = <&l2_1>;
+			operating-points-v2 = <&cpu_opp>;
 			power-domains = <&cpu_pd6>, <&cpr 0>;
 			power-domain-names = "psci", "perf";
 			#cooling-cells = <2>;
@@ -182,6 +189,7 @@
 			clocks = <&apcscc APCS_CPU4_CLK>;
 			clock-names = "cpu";
 			next-level-cache = <&l2_1>;
+			operating-points-v2 = <&cpu_opp>;
 			power-domains = <&cpu_pd7>, <&cpr 0>;
 			power-domain-names = "psci", "perf";
 			#cooling-cells = <2>;
@@ -275,6 +283,208 @@
 			compatible = "cache";
 			cache-level = <2>;
 			cache-unified;
+		};
+	};
+
+	cpu_opp: opp-table-cpu {
+		compatible = "operating-points-v2-kryo-cpu";
+		nvmem-cells = <&cpu_speed_bin>;
+		opp-shared;
+
+		opp-614400 {
+			opp-hz = /bits/ 64 <614400000>;
+			opp-peak-kBps = <806400>, <307200>;
+			opp-avg-kBps = <512000>, <0>;
+			opp-supported-hw = <0x4500>;
+			opp-suspend;
+			required-opps = <&cpr_opp_6144>;
+			clock-latency-ns = <1000000>;
+		};
+		opp-652800 {
+			opp-hz = /bits/ 64 <652800000>;
+			opp-peak-kBps = <806400>, <320900>;
+			opp-avg-kBps = <512000>, <0>;
+			opp-supported-hw = <0xc5>;
+			opp-suspend;
+			required-opps = <&cpr_opp_6528>;
+			clock-latency-ns = <1000000>;
+		};
+		opp-844800 {
+			opp-hz = /bits/ 64 <844800000>;
+			opp-peak-kBps = <3400000>, <389400>;
+			opp-avg-kBps = <512000>, <0>;
+			opp-supported-hw = <0x45c5>;
+			required-opps = <&cpr_opp_8448>;
+			clock-latency-ns = <1000000>;
+		};
+		opp-1036800 {
+			opp-hz = /bits/ 64 <1036800000>;
+			opp-peak-kBps = <4200000>, <499200>;
+			opp-avg-kBps = <512000>, <0>;
+			opp-supported-hw = <0x45c5>;
+			required-opps = <&cpr_opp_10368>;
+			clock-latency-ns = <1000000>;
+		};
+		opp-1228800 {
+			opp-hz = /bits/ 64 <1228800000>;
+			opp-peak-kBps = <5000000>, <612100>;
+			opp-avg-kBps = <512000>, <0>;
+			opp-supported-hw = <0x45c5>;
+			required-opps = <&cpr_opp_12288>;
+			clock-latency-ns = <1000000>;
+		};
+		opp-1420800 {
+			opp-hz = /bits/ 64 <1420800000>;
+			opp-peak-kBps = <5800000>, <716800>;
+			opp-avg-kBps = <512000>, <0>;
+			opp-supported-hw = <0x45c5>;
+			required-opps = <&cpr_opp_14208>;
+			clock-latency-ns = <1000000>;
+		};
+		opp-1612800 {
+			opp-hz = /bits/ 64 <1612800000>;
+			opp-peak-kBps = <6600000>, <778900>;
+			opp-avg-kBps = <512000>, <0>;
+			opp-supported-hw = <0x45c5>;
+			required-opps = <&cpr_opp_16128>;
+			clock-latency-ns = <1000000>;
+		};
+		opp-1804800 {
+			opp-hz = /bits/ 64 <1804800000>;
+			opp-peak-kBps = <7400000>, <787200>;
+			opp-avg-kBps = <512000>, <0>;
+			opp-supported-hw = <0x45c5>;
+			required-opps = <&cpr_opp_18048>;
+			clock-latency-ns = <1000000>;
+		};
+		opp-2016000 {
+			opp-hz = /bits/ 64 <2016000000>;
+			opp-peak-kBps = <7400000>, <787200>;
+			opp-avg-kBps = <512000>, <0>;
+			opp-supported-hw = <0x85>;
+			required-opps = <&cpr_opp_20160>;
+			clock-latency-ns = <1000000>;
+		};
+		opp-2208000 {
+			opp-hz = /bits/ 64 <2208000000>;
+			opp-peak-kBps = <7400000>, <787200>;
+			opp-avg-kBps = <512000>, <0>;
+			opp-supported-hw = <0x80>;
+			required-opps = <&cpr_opp_22080>;
+			clock-latency-ns = <1000000>;
+		};
+	};
+
+	cpu_perf_opp: opp-table-cpuperf {
+		compatible = "operating-points-v2-kryo-cpu";
+		nvmem-cells = <&cpu_speed_bin>;
+		opp-shared;
+
+		opp-633600 {
+			opp-hz = /bits/ 64 <633600000>;
+			opp-peak-kBps = <1611000>, <307200>;
+			opp-supported-hw = <0x4500>;
+			opp-suspend;
+			required-opps = <&cpr_opp_6336>;
+			clock-latency-ns = <1000000>;
+		};
+		opp-844800 {
+			opp-hz = /bits/ 64 <844800000>;
+			opp-peak-kBps = <2319000>, <382600>;
+			opp-supported-hw = <0x4500>;
+			required-opps = <&cpr_opp_8448>;
+			clock-latency-ns = <1000000>;
+		};
+		opp-1036800 {
+			opp-hz = /bits/ 64 <1036800000>;
+			opp-peak-kBps = <3027000>, <470400>;
+			opp-supported-hw = <0x4500>;
+			required-opps = <&cpr_opp_10368>;
+			clock-latency-ns = <1000000>;
+		};
+		opp-1228800 {
+			opp-hz = /bits/ 64 <1228800000>;
+			opp-peak-kBps = <3735000>, <583200>;
+			opp-supported-hw = <0x4500>;
+			required-opps = <&cpr_opp_12288>;
+			clock-latency-ns = <1000000>;
+		};
+		opp-1420800 {
+			opp-hz = /bits/ 64 <1420800000>;
+			opp-peak-kBps = <4443000>, <700800>;
+			opp-supported-hw = <0x4500>;
+			required-opps = <&cpr_opp_14208>;
+			clock-latency-ns = <1000000>;
+		};
+		opp-1612800 {
+			opp-hz = /bits/ 64 <1612800000>;
+			opp-peak-kBps = <5151000>, <772400>;
+			opp-supported-hw = <0x4500>;
+			required-opps = <&cpr_opp_16128>;
+			clock-latency-ns = <1000000>;
+		};
+		opp-1804800 {
+			opp-hz = /bits/ 64 <1804800000>;
+			opp-peak-kBps = <5859000>, <787200>;
+			opp-supported-hw = <0x4500>;
+			required-opps = <&cpr_opp_18048>;
+			clock-latency-ns = <1000000>;
+		};
+		opp-2016000 {
+			opp-hz = /bits/ 64 <2016000000>;
+			opp-peak-kBps = <7104000>, <787200>;
+			opp-supported-hw = <0x400>;
+			required-opps = <&cpr_opp_20160>;
+			clock-latency-ns = <1000000>;
+		};
+	};
+
+	cpr_opp: opp-table-cpr {
+		compatible = "operating-points-v2";
+
+		cpr_opp_6144: opp-6144 { opp-level = <6144>; };
+		cpr_opp_6336: opp-6336 { opp-level = <6336>; };
+		cpr_opp_6528: opp-6528 { opp-level = <6528>; };
+		cpr_opp_8448: opp-8448 { opp-level = <8448>; };
+		cpr_opp_10368: opp-10368 { opp-level = <10368>; };
+		cpr_opp_12288: opp-12288 { opp-level = <12288>; };
+		cpr_opp_14208: opp-14208 { opp-level = <14208>; };
+		cpr_opp_16128: opp-16128 { opp-level = <16128>; };
+		cpr_opp_18048: opp-18048 { opp-level = <18048>; };
+		cpr_opp_20160: opp-20160 { opp-level = <20160>; };
+		cpr_opp_22080: opp-22080 { opp-level = <22080>; };
+	};
+
+	cci_opp: opp-table-cci {
+		compatible = "operating-points-v2";
+
+		cci_opp_307200: opp-307200 {
+			opp-hz = /bits/ 64 <307200000>;
+			required-opps = <&cpr_opp_6144>;
+		};
+		cci_opp_389400: opp-389400 {
+			opp-hz = /bits/ 64 <389400000>;
+			required-opps = <&cpr_opp_8448>;
+		};
+		cci_opp_499200: opp-499200 {
+			opp-hz = /bits/ 64 <499200000>;
+			required-opps = <&cpr_opp_10368>;
+		};
+		cci_opp_612100: opp-612100 {
+			opp-hz = /bits/ 64 <612100000>;
+			required-opps = <&cpr_opp_12288>;
+		};
+		cci_opp_716800: opp-716800 {
+			opp-hz = /bits/ 64 <716800000>;
+			required-opps = <&cpr_opp_14208>;
+		};
+		cci_opp_778900: opp-778900 {
+			opp-hz = /bits/ 64 <778900000>;
+			required-opps = <&cpr_opp_16128>;
+		};
+		cci_opp_787200: opp-787200 {
+			opp-hz = /bits/ 64 <787200000>;
+			required-opps = <&cpr_opp_18048>;
 		};
 	};
 
@@ -2603,6 +2813,7 @@
 				      "gpll4",
 				      "cci-icc";
 
+			operating-points-v2 = <&cci_opp>;
 			power-domains = <&cpr 0>;
 
 			#clock-cells = <1>;
@@ -2629,6 +2840,8 @@
 
 			clocks = <&xo_board>;
 			clock-names = "ref";
+
+			operating-points-v2 = <&cpr_opp>;
 
 			#power-domain-cells = <1>;
 		};
