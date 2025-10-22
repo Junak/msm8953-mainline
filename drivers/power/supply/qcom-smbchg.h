@@ -248,7 +248,13 @@ struct smbchg_chip {
 	struct extcon_dev *edev;
 
 	spinlock_t sec_access_lock;
-	struct work_struct otg_reset_work;
+	struct delayed_work otg_reset_work;
+	struct delayed_work detect_work;
+	struct usb_role_switch *role_sw;
+	enum usb_role last_role;
+	u16 role_sw_timeout;
+	/* prevent races with reset work */
+	struct mutex otg_lock;
 
 	const struct smbchg_data *data;
 
