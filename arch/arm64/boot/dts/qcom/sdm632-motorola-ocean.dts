@@ -433,11 +433,6 @@
 	status = "okay";
 };
 
-&usb3_dwc3 {
-	/delete-property/ usb-role-switch;
-	dr_mode = "peripheral";
-};
-
 &wcd_codec {
 	status = "okay";
 

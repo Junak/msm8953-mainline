@@ -4,6 +4,7 @@
 #include "msm8953.dtsi"
 #include "pm8953.dtsi"
 #include "pmi8950.dtsi"
+#include "pmi8950-usb-type-b.dtsi"
 #include <dt-bindings/leds/common.h>
 
 / {
@@ -437,15 +438,8 @@
 };
 
 &usb3 {
-	extcon = <&pmi8950_smbcharger>;
-	status = "okay";
-};
-
-&usb3_dwc3 {
 	usb-psy-name = "qcom-smbchg-usb";
-	extcon = <&pmi8950_smbcharger>;
-	vbus-supply = <&otg_vbus>;
-	dr_mode = "otg";
+	status = "okay";
 };
 
 &wcd_codec {

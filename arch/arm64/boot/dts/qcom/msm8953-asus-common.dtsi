@@ -477,11 +477,6 @@
 	status = "okay";
 };
 
-&usb3_dwc3 {
-	dr_mode = "peripheral";
-	vbus-supply = <&otg_vbus>;
-};
-
 &wcd_codec {
 	status = "okay";
 
