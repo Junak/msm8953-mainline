@@ -2248,17 +2248,16 @@
 			};
 		};
 
-		usb3: usb@70f8800 {
-			compatible = "qcom,msm8953-dwc3", "qcom,dwc3";
-			reg = <0x070f8800 0x400>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges;
+		usb3: usb@7000000 {
+			compatible = "qcom,msm8953-dwc3", "qcom,snps-dwc3";
+			reg = <0x07000000 0xfa000>;
 
-			interrupts = <GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>,
+			interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 136 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "pwr_event",
+			interrupt-names = "dwc_usb3",
+					  "pwr_event",
 					  "qusb2_phy",
 					  "ss_phy_irq";
 
@@ -2275,7 +2274,7 @@
 
 			assigned-clocks = <&gcc GCC_USB30_MOCK_UTMI_CLK>,
 					  <&gcc GCC_USB30_MASTER_CLK>;
-			assigned-clock-rates = <19200000>, <133330000>;
+			assigned-clock-rates = <19200000>, <80000000>;
 
 			interconnects = <&pcnoc MAS_USB3 RPM_ALWAYS_TAG
 					 &bimc SLV_EBI RPM_ALWAYS_TAG>,
@@ -2288,34 +2287,30 @@
 
 			qcom,select-utmi-as-pipe-clk;
 
+			snps,usb2-gadget-lpm-disable;
+			snps,dis-u1-entry-quirk;
+			snps,dis-u2-entry-quirk;
+			snps,is-utmi-l1-suspend;
+			snps,hird-threshold = /bits/ 8 <0x00>;
+
+			phys = <&hsusb_phy>;
+			phy-names = "usb2-phy";
+
+			maximum-speed = "high-speed";
+			usb-role-switch;
+			role-switch-default-mode = "peripheral";
+			wakeup-source;
+
 			status = "disabled";
 
-			usb3_dwc3: usb@7000000 {
-				compatible = "snps,dwc3";
-				reg = <0x07000000 0xcc00>;
-				interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
-				phys = <&hsusb_phy>;
-				phy-names = "usb2-phy";
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
 
-				snps,usb2-gadget-lpm-disable;
-				snps,dis-u1-entry-quirk;
-				snps,dis-u2-entry-quirk;
-				snps,is-utmi-l1-suspend;
-				snps,hird-threshold = /bits/ 8 <0x00>;
+				port@0 {
+					reg = <0>;
 
-				maximum-speed = "high-speed";
-
-				usb-role-switch;
-
-				ports {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					port@0 {
-						reg = <0>;
-
-						usb_dwc3_hs: endpoint {
-						};
+					usb_dwc3_hs: endpoint {
 					};
 				};
 			};
