@@ -1041,7 +1041,7 @@ static int _set_opp_voltage(struct device *dev, struct regulator *reg,
 		return 0;
 	}
 
-	dev_dbg(dev, "%s: voltages (mV): %lu %lu %lu\n", __func__,
+	dev_vdbg(dev, "%s: voltages (mV): %lu %lu %lu\n", __func__,
 		supply->u_volt_min, supply->u_volt, supply->u_volt_max);
 
 	ret = regulator_set_voltage_triplet(reg, supply->u_volt_min,
@@ -1311,11 +1311,11 @@ static int _set_opp(struct device *dev, struct opp_table *opp_table,
 
 	/* Return early if nothing to do */
 	if (!forced && old_opp == opp && opp_table->enabled) {
-		dev_dbg_ratelimited(dev, "%s: OPPs are same, nothing to do\n", __func__);
+		dev_vdbg(dev, "%s: OPPs are same, nothing to do\n", __func__);
 		return 0;
 	}
 
-	dev_dbg(dev, "%s: switching OPP: Freq %lu -> %lu Hz, Level %u -> %u, Bw %u -> %u\n",
+	dev_vdbg(dev, "%s: switching OPP: Freq %lu -> %lu Hz, Level %u -> %u, Bw %u -> %u\n",
 		__func__, old_opp->rates[0], opp->rates[0], old_opp->level,
 		opp->level, old_opp->bandwidth ? old_opp->bandwidth[0].peak : 0,
 		opp->bandwidth ? opp->bandwidth[0].peak : 0);
