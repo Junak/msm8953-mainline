@@ -22,6 +22,7 @@
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
 
+#include "camss-csid.h"
 #include "camss-vfe.h"
 #include "camss.h"
 
@@ -937,6 +938,32 @@ static bool vfe_check_clock_levels(struct camss_clock *clock)
 	return false;
 }
 
+static void vfe_clamp_pixel_rate(struct vfe_device *vfe,
+		struct vfe_line *line, u64 *pix_rate, u8 bpp)
+{
+	struct media_pad *pad = &line->pads[MSM_VFE_PAD_SINK];
+	s64 link_freq;
+	u8 lanes = 0;
+
+	pad = media_pad_remote_pad_first(pad);
+	if (!pad || !is_media_entity_v4l2_subdev(pad->entity))
+		return;
+
+	pad = media_pad_remote_pad_first(&pad->entity->pads[MSM_ISPIF_PAD_SINK]);
+	if (!pad || !is_media_entity_v4l2_subdev(pad->entity))
+		return;
+
+	msm_csid_get_lane_count(pad->entity, &lanes);
+	if (!lanes)
+		return;
+
+	link_freq = camss_get_link_freq(pad->entity, bpp, lanes);
+	if (link_freq <= 0)
+		return;
+
+	*pix_rate = min(*pix_rate, (u64) mult_frac(link_freq, 2 * lanes, bpp));
+}
+
 /*
  * vfe_set_clock_rates - Calculate and set clock rates on VFE module
  * @vfe: VFE device
@@ -965,19 +992,25 @@ static int vfe_set_clock_rates(struct vfe_device *vfe)
 			long rate;
 
 			for (j = VFE_LINE_RDI0; j < vfe->res->line_num; j++) {
+				struct vfe_line *l = &vfe->line[j];
 				u32 tmp;
 				u8 bpp;
+
+				if (!pixel_clock[j])
+					continue;
+
+				bpp = camss_format_get_bpp(l->formats,
+						l->nformats,
+						l->fmt[MSM_VFE_PAD_SINK].code);
+
+				vfe_clamp_pixel_rate(vfe, l, &pixel_clock[j], bpp);
 
 				if (j == VFE_LINE_PIX) {
 					tmp = pixel_clock[j];
 					if (vfe->camss->res->version == CAMSS_8x53)
 						tmp /= 2;
 				} else {
-					struct vfe_line *l = &vfe->line[j];
 
-					bpp = camss_format_get_bpp(l->formats,
-								   l->nformats,
-								   l->fmt[MSM_VFE_PAD_SINK].code);
 					if (vfe->camss->res->version == CAMSS_8x53)
 						tmp = pixel_clock[j] * bpp * 3 / 128;
 					else
@@ -1051,19 +1084,25 @@ static int vfe_check_clock_rates(struct vfe_device *vfe)
 			unsigned long rate;
 
 			for (j = VFE_LINE_RDI0; j < vfe->res->line_num; j++) {
+				struct vfe_line *l = &vfe->line[j];
 				u32 tmp;
 				u8 bpp;
+
+				if (!pixel_clock[j])
+					continue;
+
+				bpp = camss_format_get_bpp(l->formats,
+						l->nformats,
+						l->fmt[MSM_VFE_PAD_SINK].code);
+
+				vfe_clamp_pixel_rate(vfe, l, &pixel_clock[j], bpp);
+
 
 				if (j == VFE_LINE_PIX) {
 					tmp = pixel_clock[j];
 					if (vfe->camss->res->version == CAMSS_8x53)
 						tmp /= 2;
 				} else {
-					struct vfe_line *l = &vfe->line[j];
-
-					bpp = camss_format_get_bpp(l->formats,
-								   l->nformats,
-								   l->fmt[MSM_VFE_PAD_SINK].code);
 					if (vfe->camss->res->version == CAMSS_8x53)
 						tmp = pixel_clock[j] * bpp * 3 / 128;
 					else

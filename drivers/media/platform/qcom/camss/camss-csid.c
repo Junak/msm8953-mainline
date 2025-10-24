@@ -1214,6 +1214,14 @@ void msm_csid_get_csid_id(struct media_entity *entity, u8 *id)
 	*id = csid->id;
 }
 
+void msm_csid_get_lane_count(struct media_entity *entity, u8 *cnt)
+{
+	struct v4l2_subdev *sd = media_entity_to_v4l2_subdev(entity);
+	struct csid_device *csid = v4l2_get_subdevdata(sd);
+
+	*cnt = csid->phy.lane_cnt;
+}
+
 /*
  * csid_get_lane_assign - Calculate CSI2 lane assign configuration parameter
  * @lane_cfg - CSI2 lane configuration
