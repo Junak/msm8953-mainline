@@ -14,3 +14,7 @@
 		required-opps = <&rpmpd_opp_turbo>;
 	};
 };
+
+&camss {
+	compatible = "qcom,sdm450-camss";
+};
