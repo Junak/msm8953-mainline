@@ -204,6 +204,7 @@ int msm_csid_register_entity(struct csid_device *csid,
 void msm_csid_unregister_entity(struct csid_device *csid);
 
 void msm_csid_get_csid_id(struct media_entity *entity, u8 *id);
+void msm_csid_get_lane_count(struct media_entity *entity, u8 *cnt);
 
 extern const char * const csid_testgen_modes[];
 
