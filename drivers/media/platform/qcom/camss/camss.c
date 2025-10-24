@@ -5098,6 +5098,19 @@ static const struct camss_resources msm8939_resources = {
 	.vfe_num = ARRAY_SIZE(vfe_res_8x39),
 };
 
+static const struct camss_resources sdm450_resources = {
+	.version = CAMSS_8x53,
+	.icc_res = icc_res_8x53,
+	.icc_path_num = ARRAY_SIZE(icc_res_8x53),
+	.csiphy_res = csiphy_res_8x96,
+	.csid_res = csid_res_8x53,
+	.ispif_res = &ispif_res_8x53,
+	.vfe_res = vfe_res_8x53,
+	.csiphy_num = ARRAY_SIZE(csiphy_res_8x96),
+	.csid_num = MIN(2, ARRAY_SIZE(csid_res_8x53)),
+	.vfe_num = ARRAY_SIZE(vfe_res_8x53),
+};
+
 static const struct camss_resources msm8953_resources = {
 	.version = CAMSS_8x53,
 	.icc_res = icc_res_8x53,
@@ -5293,6 +5306,7 @@ static const struct of_device_id camss_dt_match[] = {
 	{ .compatible = "qcom,msm8916-camss", .data = &msm8916_resources },
 	{ .compatible = "qcom,msm8939-camss", .data = &msm8939_resources },
 	{ .compatible = "qcom,msm8953-camss", .data = &msm8953_resources },
+	{ .compatible = "qcom,sdm450-camss", .data = &sdm450_resources },
 	{ .compatible = "qcom,msm8996-camss", .data = &msm8996_resources },
 	{ .compatible = "qcom,qcm2290-camss", .data = &qcm2290_resources },
 	{ .compatible = "qcom,qcs8300-camss", .data = &qcs8300_resources },
