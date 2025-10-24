@@ -4918,7 +4918,8 @@ static void camss_genpd_cleanup(struct camss *camss)
 	if (camss->genpd_link)
 		device_link_del(camss->genpd_link);
 
-	dev_pm_domain_detach(camss->genpd, true);
+	if (camss->genpd)
+		dev_pm_domain_detach(camss->genpd, true);
 }
 
 /*
