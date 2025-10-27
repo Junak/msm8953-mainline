@@ -842,6 +842,12 @@ menuconfig VIDEO_CAMERA_LENS
 
 if VIDEO_CAMERA_LENS
 
+config VIDEO_SIMPLE_LENS
+	tristate "Simple I2C-controlled camera actuator support"
+	select REGMAP_I2C
+    help
+	  This is a driver for simple camera lens actuators.
+
 config VIDEO_AD5820
 	tristate "AD5820 lens voice coil support"
 	depends on GPIOLIB
