@@ -124,6 +124,7 @@ obj-$(CONFIG_VIDEO_OV9734) += ov9734.o
 obj-$(CONFIG_VIDEO_RDACM20) += rdacm20.o
 obj-$(CONFIG_VIDEO_RDACM21) += rdacm21.o
 obj-$(CONFIG_VIDEO_RJ54N1) += rj54n1cb0c.o
+obj-$(CONFIG_VIDEO_SIMPLE_LENS) += simple-lens.o
 obj-$(CONFIG_VIDEO_S5C73M3) += s5c73m3/
 obj-$(CONFIG_VIDEO_S5K2XX)	+= s5k2xx.o
 obj-$(CONFIG_VIDEO_S5K5BAF) += s5k5baf.o
