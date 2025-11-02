@@ -321,18 +321,27 @@ static int ispif_vfe_reset(struct ispif_device *ispif, u8 vfe_id)
 static int ispif_reset(struct ispif_device *ispif, u8 vfe_id)
 {
 	struct camss *camss = ispif->camss;
-	struct vfe_device *vfe = &camss->vfe[vfe_id];
 	int ret;
 
-	ret = vfe_power_on(vfe);
+	ret = vfe_power_on(&camss->vfe[0]);
 	if (ret)
 		return ret;
+
+	if (camss->res->vfe_num > 1) {
+		ret = vfe_power_on(&camss->vfe[1]);
+		if (ret)
+			goto vfe0_power_off;
+	}
 
 	ret = ispif_vfe_reset(ispif, vfe_id);
 	if (ret)
 		dev_dbg(camss->dev, "ISPIF Reset failed\n");
 
-	vfe_power_off(vfe);
+	if (camss->res->vfe_num > 1)
+		vfe_power_off(&camss->vfe[1]);
+
+vfe0_power_off:
+	vfe_power_off(&camss->vfe[0]);
 
 	return ret;
 }
