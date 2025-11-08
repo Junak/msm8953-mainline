@@ -420,7 +420,7 @@ static int sm5708_cal_carc (struct sm5708_battery *bat)
 	return 0;
 }
 
-int sm5708_calculate_iocv(struct sm5708_battery *bat)
+static int sm5708_calculate_iocv(struct sm5708_battery *bat)
 {
 	bool only_lb = false;
 	int roop_start = 0, roop_max = 0, i = 0;
@@ -619,7 +619,7 @@ static bool sm5708_battery_init(struct sm5708_battery *bat, bool is_surge)
 	return true;
 }
 
-void sm5708_battery_reset(struct sm5708_battery *bat, bool is_surge)
+static void sm5708_battery_reset(struct sm5708_battery *bat, bool is_surge)
 {
 	unsigned int code = is_surge ? SW_RESET_OTP_CODE : SW_RESET_CODE;
 	int ret, retries = 3;
@@ -713,7 +713,7 @@ static const struct power_supply_desc sm5708_battery_desc = {
 	.num_properties	= ARRAY_SIZE(sm5708_battery_properties),
 };
 
-static int sm5708_battery_probe(struct i2c_client *client, const struct i2c_device_id *id)
+static int sm5708_battery_probe(struct i2c_client *client)
 {
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
 	struct sm5708_battery *battery;

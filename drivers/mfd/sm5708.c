@@ -156,8 +156,7 @@ static struct mfd_cell sm5708_devs[] = {
 	{ .name = "sm5708-fled", .of_compatible = "siliconmitus,sm5708-fled" },
 };
 
-static int sm5708_i2c_probe(struct i2c_client *i2c,
-		const struct i2c_device_id *dev_id)
+static int sm5708_i2c_probe(struct i2c_client *i2c)
 {
 	struct sm5708_chip *chip;
 	int ret = 0;
