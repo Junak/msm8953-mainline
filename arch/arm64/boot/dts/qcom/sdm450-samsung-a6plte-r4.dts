@@ -22,12 +22,12 @@
 		i2c2 = &i2c_2;
 		i2c3 = &i2c_3;
 		i2c5 = &i2c_5;
-		i2c8 = &i2c_8;
 		i2c11 = &i2c_gpio_1;
 		i2c12 = &i2c_gpio_2;
 		i2c13 = &i2c_gpio_3;
 		i2c14 = &i2c_gpio_4;
 		i2c15 = &i2c_gpio_5;
+		i2c16 = &i2c_gpio_6;
 		i2c20 = &cci_i2c0;
 		i2c21 = &cci_i2c1;
 		serial0 = &uart_0;
@@ -111,6 +111,15 @@
 		compatible = "i2c-gpio";
 		sda-gpios = <&tlmm 131 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
 		scl-gpios = <&tlmm 128 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
+	i2c_gpio_6: i2c-gpio-6 {
+		compatible = "i2c-gpio";
+		sda-gpios = <&tlmm 98 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&tlmm 99 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
 
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -482,7 +491,7 @@
 	};
 };
 
-&i2c_8 {
+&i2c_gpio_6 {
 	status = "okay";
 
 	usb_extcon: extcon@25 {
@@ -496,6 +505,21 @@
 	pmic@49 {
 		compatible = "siliconmitus,sm5708";
 		reg = <0x49>;
+		interrupt-extended = <&tlmm 60 IRQ_TYPE_EDGE_FALLING>;
+		sm5708,irq-gpio = <&tlmm 60 0x00>;
+		pinctrl-0 = <&charger_int_default>;
+		pinctrl-names = "default";
+
+		charger: sm5708-charger {
+			compatible = "siliconmitus,sm5708-charger";
+			float-voltage = <4350>;
+			input-current = <1500>;
+			charge-current = <1800>;
+			extcon = <&usb_extcon>;
+			pinctrl-0 = <&charger_en_default>;
+			pinctrl-names = "default";
+			enable-gpios = <&tlmm 34 GPIO_ACTIVE_HIGH>;
+		};
 	};
 };
 
@@ -517,6 +541,15 @@
 		vcc-supply = <&pm8953_l5>;
 		gpio-controller;
 		#gpio-cells = <2>;
+	};
+};
+
+&i2c_gpio_3 {
+	fuelgauge@71 {
+		compatible = "sm5708-battery,a6plte";
+		reg = <0x71>;
+		interrupts-extended = <&tlmm 62 IRQ_TYPE_LEVEL_HIGH>;
+		power-supplies = <&charger>;
 	};
 };
 
@@ -760,6 +793,13 @@
 		pins = "gpio60";
 		function = "gpio";
 		bias-disable;
+	};
+
+	charger_en_default: chg-en-pins {
+		pins = "gpio34";
+		function = "gpio";
+		bias-pull-down;
+		output-high;
 	};
 
 	fg_int_default: fg-int-default-state {
