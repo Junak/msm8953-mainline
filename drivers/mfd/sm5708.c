@@ -158,17 +158,26 @@ static struct mfd_cell sm5708_devs[] = {
 
 static int sm5708_i2c_probe(struct i2c_client *i2c)
 {
+	struct device_node *np = i2c->dev.of_node;
 	struct sm5708_chip *chip;
 	int ret = 0;
+
+	if (!np)
+		return -EINVAL;
 
 	chip = devm_kzalloc(&i2c->dev, sizeof(struct sm5708_chip), GFP_KERNEL);
 	if (!chip)
 		return -ENOMEM;
 
+	/* get irq and related info from device tree */
+	int irq_gpio = of_get_named_gpio(np, "sm5708,irq-gpio", 0);
+	chip->irq = gpio_to_irq(irq_gpio);
+
 	i2c_set_clientdata(i2c, chip);
 	chip->dev = &i2c->dev;
 	chip->i2c = i2c;
-	chip->irq = i2c->irq;
+	/* commented out, i2c->irq is 0 */
+	//chip->irq = i2c->irq;
 	mutex_init(&chip->mode_mutex);
 
 	chip->regmap = devm_regmap_init_i2c(i2c,
@@ -176,7 +185,7 @@ static int sm5708_i2c_probe(struct i2c_client *i2c)
 
 	ret = regmap_add_irq_chip(chip->regmap, chip->irq,
 			IRQF_TRIGGER_LOW | IRQF_ONESHOT | IRQF_NO_SUSPEND,
-			0, &sm5708_irq_chip, &chip->irq_data);
+			-1, &sm5708_irq_chip, &chip->irq_data);
 	if (ret) {
 		dev_err(&i2c->dev, "Failed to add IRQ chip: %d\n", ret);
 		return ret;
