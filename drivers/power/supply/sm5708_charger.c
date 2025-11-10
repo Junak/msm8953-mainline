@@ -479,6 +479,10 @@ static const struct power_supply_desc sm5708_charger_desc = {
 	.num_properties	= ARRAY_SIZE(sm5708_properties),
 };
 
+static char *battery_supplied_to[] = {
+	"sm5708-battery",
+};
+
 static int sm5708_charger_probe(struct platform_device *pdev)
 {
 	struct sm5708_charger *charger;
@@ -498,6 +502,8 @@ static int sm5708_charger_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, charger);
 	psy_config.drv_data = charger;
+	psy_config.supplied_to = battery_supplied_to;
+	psy_config.num_supplicants = ARRAY_SIZE(battery_supplied_to);
 
 	ret = sm5708_parse_dt(charger);
 	if (ret < 0)
