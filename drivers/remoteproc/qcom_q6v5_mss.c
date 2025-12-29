@@ -162,6 +162,7 @@ struct rproc_hexagon_res {
 	char **proxy_pd_names;
 	int version;
 	bool need_mem_protection;
+	bool need_pas_mem_setup;
 	bool has_alt_reset;
 	bool has_mba_logs;
 	bool has_spare_reg;
@@ -240,6 +241,7 @@ struct q6v5 {
 	struct qcom_sysmon *sysmon;
 	struct platform_device *bam_dmux;
 	bool need_mem_protection;
+	bool need_pas_mem_setup;
 	bool has_alt_reset;
 	bool has_mba_logs;
 	bool has_spare_reg;
@@ -1441,7 +1443,7 @@ static int q6v5_mpss_load(struct q6v5 *qproc)
 			max_addr = ALIGN(phdr->p_paddr + phdr->p_memsz, SZ_4K);
 	}
 
-	if (qproc->version == MSS_MSM8953) {
+	if (qproc->need_pas_mem_setup) {
 		ret = qcom_scm_pas_mem_setup(MPSS_PAS_ID, qproc->mpss_phys, qproc->mpss_size);
 		if (ret) {
 			dev_err(qproc->dev,
@@ -2224,6 +2226,7 @@ static const struct rproc_hexagon_res sc7180_mss = {
 		NULL
 	},
 	.need_mem_protection = true,
+	.need_pas_mem_setup = false,
 	.has_alt_reset = false,
 	.has_mba_logs = true,
 	.has_spare_reg = true,
@@ -2253,6 +2256,7 @@ static const struct rproc_hexagon_res sc7280_mss = {
 		NULL
 	},
 	.need_mem_protection = true,
+	.need_pas_mem_setup = false,
 	.has_alt_reset = false,
 	.has_mba_logs = true,
 	.has_spare_reg = false,
@@ -2285,6 +2289,7 @@ static const struct rproc_hexagon_res sdm660_mss = {
 			NULL
 	},
 	.need_mem_protection = true,
+	.need_pas_mem_setup = false,
 	.has_alt_reset = false,
 	.has_mba_logs = false,
 	.has_spare_reg = false,
@@ -2321,6 +2326,7 @@ static const struct rproc_hexagon_res sdm845_mss = {
 			NULL
 	},
 	.need_mem_protection = true,
+	.need_pas_mem_setup = false,
 	.has_alt_reset = true,
 	.has_mba_logs = false,
 	.has_spare_reg = false,
@@ -2353,6 +2359,7 @@ static const struct rproc_hexagon_res msm8998_mss = {
 			NULL
 	},
 	.need_mem_protection = true,
+	.need_pas_mem_setup = false,
 	.has_alt_reset = false,
 	.has_mba_logs = false,
 	.has_spare_reg = false,
@@ -2392,6 +2399,7 @@ static const struct rproc_hexagon_res msm8996_mss = {
 			NULL
 	},
 	.need_mem_protection = true,
+	.need_pas_mem_setup = false,
 	.has_alt_reset = false,
 	.has_mba_logs = false,
 	.has_spare_reg = false,
@@ -2427,6 +2435,7 @@ static const struct rproc_hexagon_res msm8909_mss = {
 		NULL
 	},
 	.need_mem_protection = false,
+	.need_pas_mem_setup = false,
 	.has_alt_reset = false,
 	.has_mba_logs = false,
 	.has_spare_reg = false,
@@ -2473,6 +2482,7 @@ static const struct rproc_hexagon_res msm8916_mss = {
 		NULL
 	},
 	.need_mem_protection = false,
+	.need_pas_mem_setup = false,
 	.has_alt_reset = false,
 	.has_mba_logs = false,
 	.has_spare_reg = false,
@@ -2509,6 +2519,7 @@ static const struct rproc_hexagon_res msm8953_mss = {
 		NULL
 	},
 	.need_mem_protection = false,
+	.need_pas_mem_setup = true,
 	.has_alt_reset = false,
 	.has_mba_logs = false,
 	.has_spare_reg = false,
@@ -2562,6 +2573,7 @@ static const struct rproc_hexagon_res msm8974_mss = {
 		NULL
 	},
 	.need_mem_protection = false,
+	.need_pas_mem_setup = false,
 	.has_alt_reset = false,
 	.has_mba_logs = false,
 	.has_spare_reg = false,
@@ -2600,6 +2612,7 @@ static const struct rproc_hexagon_res msm8226_mss = {
 		NULL
 	},
 	.need_mem_protection = false,
+	.need_pas_mem_setup = false,
 	.has_alt_reset = false,
 	.has_mba_logs = false,
 	.has_spare_reg = false,
@@ -2646,6 +2659,7 @@ static const struct rproc_hexagon_res msm8926_mss = {
 		NULL
 	},
 	.need_mem_protection = false,
+	.need_pas_mem_setup = false,
 	.has_alt_reset = false,
 	.has_mba_logs = false,
 	.has_spare_reg = false,
