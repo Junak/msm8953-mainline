@@ -932,7 +932,7 @@ static void s6e3fa7_ams604nl01_gamma_init(struct s6e3fa7_ams604nl01_drv *drv, u8
 	}
 }
 
-static int s6e3fa7_ams604nl01_read_eeprom(struct mipi_dsi_device *dsi,
+static void s6e3fa7_ams604nl01_read_eeprom(struct mipi_dsi_multi_context* dsi_ctx,
 				   u8 cmd, u8 offset, u8 *output, u8 len)
 {
 	int ret;
@@ -941,19 +941,15 @@ static int s6e3fa7_ams604nl01_read_eeprom(struct mipi_dsi_device *dsi,
 	while (len > 0) {
 		offset_cmd[1] = offset;
 
-		ret = mipi_dsi_generic_write(dsi, offset_cmd, ARRAY_SIZE(offset_cmd));
-		if (ret < 0)
-			return ret;
-
-		ret = mipi_dsi_dcs_read(dsi, cmd, output, len > 8 ? 8 : len);
-		if (ret < 0)
-			return ret;
+		mipi_dsi_generic_write_multi(dsi_ctx, offset_cmd, ARRAY_SIZE(offset_cmd));
+		mipi_dsi_dcs_read_multi(dsi_ctx, cmd, output, len > 8 ? 8 : len);
+		if (dsi_ctx->accum_err < 0)
+			return;
 
 		len -= ret;
 		output += ret;
 		offset += ret;
 	}
-	return 0;
 }
 
 static int s6e3fa7_ams604nl01_get_brightness(struct backlight_device *bl)
@@ -964,6 +960,7 @@ static int s6e3fa7_ams604nl01_get_brightness(struct backlight_device *bl)
 static int s6e3fa7_ams604nl01_update_status(struct backlight_device *bl)
 {
 	struct s6e3fa7_ams604nl01_drv *drv = bl_get_data(bl);
+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = drv->dsi };
 	struct mipi_dsi_device *dsi = drv->dsi;
 	const struct brightness_level *settings;
 	int brightness = bl->props.brightness;
@@ -988,31 +985,23 @@ static int s6e3fa7_ams604nl01_update_status(struct backlight_device *bl)
 	if (!drv->bl_inited) {
 		u8 mtp_data[32];
 
-		ret = mipi_dsi_generic_write(dsi, level1_on, ARRAY_SIZE(level1_on));
-		if (ret < 0)
-			return ret;
+		mipi_dsi_generic_write_multi(&dsi_ctx, level1_on, ARRAY_SIZE(level1_on));
 
 		/* Read ELVSS DATA (B5[22:23]) */
-		ret = s6e3fa7_ams604nl01_read_eeprom(dsi, 0xb5, 0x16,
+		s6e3fa7_ams604nl01_read_eeprom(&dsi_ctx, 0xb5, 0x16,
 				drv->elvss_params, ARRAY_SIZE(drv->elvss_params));
-		if (ret < 0)
-			return ret;
 
 		/* Read IRC DATA (B8[0:1]) */
-		ret = s6e3fa7_ams604nl01_read_eeprom(dsi, 0xb8, 0,
+		s6e3fa7_ams604nl01_read_eeprom(&dsi_ctx, 0xb8, 0,
 				drv->irc_params, ARRAY_SIZE(drv->irc_params));
-		if (ret < 0)
-			return ret;
 
 		/* Read MTP OFFSET (C8[0:31]) */
-		ret = s6e3fa7_ams604nl01_read_eeprom(dsi, 0xc8, 0,
+		s6e3fa7_ams604nl01_read_eeprom(&dsi_ctx, 0xc8, 0,
 				mtp_data, ARRAY_SIZE(mtp_data));
-		if (ret < 0)
-			return ret;
 
-		ret = mipi_dsi_generic_write(dsi, level1_off, ARRAY_SIZE(level1_off));
-		if (ret < 0)
-			return ret;
+		mipi_dsi_generic_write_multi(&dsi_ctx, level1_off, ARRAY_SIZE(level1_off));
+		if (dsi_ctx.accum_err < 0)
+			return dsi_ctx.accum_err;
 
 		print_hex_dump(KERN_DEBUG, "MTP ", DUMP_PREFIX_OFFSET, 16, 1,
 				mtp_data, 32, false);
@@ -1058,35 +1047,14 @@ static int s6e3fa7_ams604nl01_update_status(struct backlight_device *bl)
 		irc_cmd[31 + i] = settings->irc31_33;
 	}
 
-	ret = mipi_dsi_generic_write(dsi, level1_on, ARRAY_SIZE(level1_on));
-	if (ret < 0)
-		goto fail;
-
-	ret = mipi_dsi_generic_write(dsi, aid_cmd, ARRAY_SIZE(aid_cmd));
-	if (ret < 0)
-		goto fail;
-
-	ret = mipi_dsi_generic_write(dsi, elvss_cmd, ARRAY_SIZE(elvss_cmd));
-	if (ret < 0)
-		goto fail;
-
-	ret = mipi_dsi_generic_write(dsi, vint_cmd, ARRAY_SIZE(vint_cmd));
-	if (ret < 0)
-		goto fail;
-
-	ret = mipi_dsi_generic_write(dsi, irc_cmd, ARRAY_SIZE(irc_cmd));
-	if (ret < 0)
-		goto fail;
-
-	ret = mipi_dsi_generic_write(dsi, gamma_cmd, GAMMA_CMD_LEN);
-	if (ret < 0)
-		goto fail;
-
-	ret = mipi_dsi_generic_write(dsi, gamma_update_cmd, ARRAY_SIZE(gamma_update_cmd));
-	if (ret < 0)
-		goto fail;
-fail:
-	mipi_dsi_generic_write(dsi, level1_off, ARRAY_SIZE(level1_off));
+	mipi_dsi_generic_write_multi(&dsi_ctx, level1_on, ARRAY_SIZE(level1_on));
+	mipi_dsi_generic_write_multi(&dsi_ctx, aid_cmd, ARRAY_SIZE(aid_cmd));
+	mipi_dsi_generic_write_multi(&dsi_ctx, elvss_cmd, ARRAY_SIZE(elvss_cmd));
+	mipi_dsi_generic_write_multi(&dsi_ctx, vint_cmd, ARRAY_SIZE(vint_cmd));
+	mipi_dsi_generic_write_multi(&dsi_ctx, irc_cmd, ARRAY_SIZE(irc_cmd));
+	mipi_dsi_generic_write_multi(&dsi_ctx, gamma_cmd, GAMMA_CMD_LEN);
+	mipi_dsi_generic_write_multi(&dsi_ctx, gamma_update_cmd, ARRAY_SIZE(gamma_update_cmd));
+	ret = mipi_dsi_generic_write(dsi, level1_off, ARRAY_SIZE(level1_off));
 
 	if (ret < 0) {
 		dev_err(&dsi->dev, "%s mipi_dsi_generic_write failed: %d", __func__, ret);
@@ -1103,7 +1071,7 @@ fail:
 static int s6e3fa7_ams604nl01_prepare(struct drm_panel *panel)
 {
 	struct s6e3fa7_ams604nl01_drv *drv = to_s6e3fa7_ams604nl01_drv(panel);
-	struct mipi_dsi_device *dsi = drv->dsi;
+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = drv->dsi };
 	int ret;
 
 	if (!drv->vregs_enabled) {
@@ -1124,55 +1092,46 @@ static int s6e3fa7_ams604nl01_prepare(struct drm_panel *panel)
 	gpiod_set_value_cansleep(drv->reset, 0);
 	usleep_range(10000, 11000);
 
-	ret = mipi_dsi_dcs_exit_sleep_mode(dsi);
-	if (ret < 0) {
-		dev_err(drv->dev, "Failed to exit sleep mode: %d\n", ret);
-		return ret;
-	}
+	mipi_dsi_dcs_exit_sleep_mode_multi(&dsi_ctx);
 
 	msleep(20);
 
-	mipi_dsi_generic_write_seq(dsi, 0x35, 0x00);  // TE Vsync On
-	mipi_dsi_generic_write_seq(dsi, LEVEL1_ON);
-	mipi_dsi_generic_write_seq(dsi, 0xcc, 0x4c); // PCD Setting
-	mipi_dsi_generic_write_seq(dsi, 0xed, 0x44); // ERR_FG
-	mipi_dsi_generic_write_seq(dsi, 0xb9, 0x00, 0x00, 0x14, // TSP SYNC
+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x35, 0x00);  // TE Vsync On
+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, LEVEL1_ON);
+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xcc, 0x4c); // PCD Setting
+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xed, 0x44); // ERR_FG
+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xb9, 0x00, 0x00, 0x14, // TSP SYNC
 			0x00, 0x18, 0x00, 0x00, 0x00, 0x00,
 			0x11, 0x01, 0x02, 0x40, 0x02, 0x40);
-	mipi_dsi_generic_write_seq(dsi, 0xc5, 0x09, 0x10, 0xc8, // FFC SYNC
+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xc5, 0x09, 0x10, 0xc8, // FFC SYNC
 			0x21, 0x67, 0x11, 0x26, 0xd4);
-	mipi_dsi_generic_write_seq(dsi, 0xf4, 0xbb, 0x1e, // AVC 2.0
+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xf4, 0xbb, 0x1e, // AVC 2.0
 			0x19, 0x3a, 0x9f, 0x0f, 0x09, 0xc0,
 			0x00, 0xb4, 0x37, 0x70, 0x79, 0x69);
-	mipi_dsi_generic_write_seq(dsi, 0xb0, 0x0e); // SAVE 5C enable
-	mipi_dsi_generic_write_seq(dsi, 0xf2, 0x80);
-	mipi_dsi_generic_write_seq(dsi, LEVEL1_OFF);
+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xb0, 0x0e); // SAVE 5C enable
+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xf2, 0x80);
+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, LEVEL1_OFF);
 
 	s6e3fa7_ams604nl01_update_status(drv->panel.backlight);
 
 	usleep_range(10000, 11000);
 
-	ret = mipi_dsi_dcs_set_display_on(drv->dsi);
-	if (ret < 0)
-		dev_err(drv->dev, "Failed to set display on: %d\n", ret);
+	mipi_dsi_dcs_set_display_on_multi(&dsi_ctx);
 
-	return 0;
+	return dsi_ctx.accum_err;
 }
 
 static int s6e3fa7_ams604nl01_unprepare(struct drm_panel *panel)
 {
 	struct s6e3fa7_ams604nl01_drv *drv = to_s6e3fa7_ams604nl01_drv(panel);
+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = drv->dsi };
 	int ret;
 
-	ret = mipi_dsi_dcs_set_display_off(drv->dsi);
-	if (ret < 0)
-		dev_err(drv->dev, "Failed to set display off: %d\n", ret);
+	mipi_dsi_dcs_set_display_off_multi(&dsi_ctx);
 
 	msleep(10);
 
-	ret = mipi_dsi_dcs_enter_sleep_mode(drv->dsi);
-	if (ret < 0)
-		dev_err(drv->dev, "Failed to enter sleep mode: %d\n", ret);
+	mipi_dsi_dcs_enter_sleep_mode_multi(&dsi_ctx);
 
 	msleep(120);
 
@@ -1189,7 +1148,7 @@ static int s6e3fa7_ams604nl01_unprepare(struct drm_panel *panel)
 		drv->vregs_enabled = false;
 	}
 
-	return 0;
+	return dsi_ctx.accum_err;
 }
 
 static const struct drm_display_mode s6e3fa7_ams604nl01_mode_2220x1080 = {
