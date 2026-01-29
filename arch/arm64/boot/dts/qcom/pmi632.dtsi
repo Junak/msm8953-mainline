@@ -164,6 +164,19 @@
 			status = "disabled";
 		};
 
+		pmi632_qgauge: qgauge@4800 {
+			compatible = "qcom,pmi632-qg", "qcom,pm6150-qg";
+
+			reg = <0x4800>;
+			io-channels = <&pmi632_adc ADC5_BAT_THERM_100K_PU>,
+				      <&pmi632_adc ADC5_BAT_ID_100K_PU>;
+			io-channel-names = "batt-therm",
+					   "batt-id";
+			nvmem = <&pmi632_sdam_7>;
+
+			status = "disabled";
+		};
+
 		pmi632_pbs_client3: pbs@7400 {
 			compatible = "qcom,pmi632-pbs", "qcom,pbs";
 			reg = <0x7400>;
