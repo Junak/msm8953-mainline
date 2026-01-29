@@ -149,6 +149,12 @@ enum smb_generation {
 #define P_PATH_VALID_INPUT_POWER_SOURCE_STS_BIT		BIT(0)
 
 /* 0x5xx region is PM8150b only Type-C registers */
+#define SMB5_TYPE_C_SRC_STATUS_REG			0x508
+#define SMB5_DETECTED_SNK_TYPE_MASK			GENMASK(4, 0)
+#define SMB5_SRC_DEBUG_ACCESS_BIT			BIT(4)
+#define SMB5_SRC_RD_OPEN_BIT				BIT(3)
+#define SMB5_SRC_RD_RA_VCONN_BIT			BIT(2)
+#define SMB5_AUDIO_ACCESS_RA_RA_BIT			BIT(0)
 
 /* Bits 2:0 match PMI8998 TYPE_C_INTRPT_ENB_SOFTWARE_CTRL */
 #define SMB5_TYPE_C_MODE_CFG				0x544
@@ -196,9 +202,6 @@ enum smb_generation {
 #define CDP_CURRENT_UA					1500000
 #define DCP_CURRENT_UA					1500000
 #define CURRENT_MAX_UA					DCP_CURRENT_UA
-
-/* pmi8998 registers represent current in increments of 1/40th of an amp */
-#define CURRENT_SCALE_FACTOR				25000
 /* clang-format on */
 
 enum charger_status {
@@ -225,6 +228,9 @@ struct smb_init_register {
  * @base:		Base address for smb registers
  * @regmap:		Register map
  * @batt_info:		Battery data from DT
+ * @gen:		Generation of SMBx hardware block
+ * @current_step_size_ua: Step size of current limits in uA
+ * @current_limit_max_ua: Maximum charging current in uA
  * @status_change_work: Worker to handle plug/unplug events
  * @cable_irq:		USB plugin IRQ
  * @wakeup_enabled:	If the cable IRQ will cause a wakeup
@@ -239,6 +245,8 @@ struct smb_chip {
 	struct regmap *regmap;
 	struct power_supply_battery_info *batt_info;
 	enum smb_generation gen;
+	unsigned int current_step_size_ua;
+	unsigned int current_limit_max_ua;
 
 	struct delayed_work status_change_work;
 	int cable_irq;
@@ -254,7 +262,9 @@ struct smb_match_data {
 	const char *name;
 	enum smb_generation gen;
 	size_t init_seq_len;
-	const struct smb_init_register __counted_by(init_seq_len) *init_seq;
+	const struct smb_init_register *init_seq;
+	unsigned int current_step_size_ua;
+	unsigned int current_limit_max_ua;
 };
 
 static enum power_supply_property smb_properties[] = {
@@ -268,6 +278,16 @@ static enum power_supply_property smb_properties[] = {
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_USB_TYPE,
 };
+
+static bool smb_is_charging(struct smb_chip *chip)
+{
+	int rc;
+	union power_supply_propval status;
+
+	rc = power_supply_get_property(chip->chg_psy, POWER_SUPPLY_PROP_STATUS,
+				       &status);
+	return !(rc < 0 || status.intval != POWER_SUPPLY_STATUS_CHARGING);
+}
 
 static int smb_get_prop_usb_online(struct smb_chip *chip, int *val)
 {
@@ -414,7 +434,59 @@ static inline int smb_get_current_limit(struct smb_chip *chip,
 	int rc = regmap_read(chip->regmap, chip->base + ICL_STATUS(chip), val);
 
 	if (rc >= 0)
-		*val *= CURRENT_SCALE_FACTOR;
+		*val *= chip->current_step_size_ua;
+	return rc;
+}
+
+static inline int smb_get_current_now(struct smb_chip *chip,
+					unsigned int *val)
+{
+	unsigned int stat;
+	bool sink_connected;
+	int rc = iio_read_channel_processed(chip->usb_in_i_chan, val);
+	if (rc < 0 || chip->gen == SMB2)
+		return rc;
+
+	rc = regmap_read(chip->regmap, chip->base + SMB5_TYPE_C_SRC_STATUS_REG, &stat);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't read type-C status rc=%d\n", rc);
+		return rc;
+	}
+
+	switch (stat & SMB5_DETECTED_SNK_TYPE_MASK) {
+	case SMB5_AUDIO_ACCESS_RA_RA_BIT:
+	case SMB5_SRC_DEBUG_ACCESS_BIT:
+	case SMB5_SRC_RD_RA_VCONN_BIT:
+	case SMB5_SRC_RD_OPEN_BIT:
+		sink_connected = true;
+		break;
+	default:
+		sink_connected = false;
+		break;
+	}
+
+	/*
+	 * For PM8150B, scaling factor = reciprocal of
+	 * 0.2V/A in Buck mode, 0.4V/A in Boost mode.
+	 * For PMI632, scaling factor = reciprocal of
+	 * 0.4V/A in Buck mode, 0.8V/A in Boost mode.
+	 */
+	// TODO: Make member in match data
+	int buck_scale = 20;
+	int boost_scale = 40;
+
+	if (sink_connected) {
+		*val = DIV_ROUND_CLOSEST(*val * 100, boost_scale);
+		return rc;
+	}
+
+	if (!smb_is_charging(chip)) {
+		*val = 0;
+		return rc;
+	}
+
+	*val = DIV_ROUND_CLOSEST(*val * 100, buck_scale);
+
 	return rc;
 }
 
@@ -422,12 +494,12 @@ static int smb_set_current_limit(struct smb_chip *chip, unsigned int val)
 {
 	unsigned char val_raw;
 
-	if (val > 4800000) {
+	if (val > chip->current_limit_max_ua) {
 		dev_err(chip->dev,
-			"Can't set current limit higher than 4800000uA");
+			"Can't set current limit higher than %u uA\n", chip->current_limit_max_ua);
 		return -EINVAL;
 	}
-	val_raw = val / CURRENT_SCALE_FACTOR;
+	val_raw = val / chip->current_step_size_ua;
 
 	return regmap_write(chip->regmap, chip->base + USBIN_CURRENT_LIMIT_CFG,
 			    val_raw);
@@ -488,12 +560,7 @@ static void smb_status_change_work(struct work_struct *work)
 static int smb_get_iio_chan(struct smb_chip *chip, struct iio_channel *chan,
 			     int *val)
 {
-	int rc;
-	union power_supply_propval status;
-
-	rc = power_supply_get_property(chip->chg_psy, POWER_SUPPLY_PROP_STATUS,
-				       &status);
-	if (rc < 0 || status.intval != POWER_SUPPLY_STATUS_CHARGING) {
+	if (!smb_is_charging(chip)) {
 		*val = 0;
 		return 0;
 	}
@@ -585,6 +652,8 @@ static int smb_get_prop_health(struct smb_chip *chip, int *val)
 	case SMB5:
 		return smb5_get_prop_health(chip, val);
 	}
+
+	return -EINVAL;
 }
 
 static int smb_get_property(struct power_supply *psy,
@@ -604,8 +673,7 @@ static int smb_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		return smb_get_current_limit(chip, &val->intval);
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		return smb_get_iio_chan(chip, chip->usb_in_i_chan,
-					 &val->intval);
+		return smb_get_current_now(chip, &val->intval);
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		ret = smb_get_iio_chan(chip, chip->usb_in_v_chan,
 					 &val->intval);
@@ -793,15 +861,6 @@ static const struct smb_init_register smb5_init_seq[] = {
 			| USBIN_AICL_EN_BIT | SUSPEND_ON_COLLAPSE_USBIN_BIT,
 	  .val = USBIN_AICL_PERIODIC_RERUN_EN_BIT | USBIN_AICL_ADC_EN_BIT
 			| USBIN_AICL_EN_BIT | SUSPEND_ON_COLLAPSE_USBIN_BIT },
-	/*
-	 * This overrides all of the other current limit configs and is
-	 * expected to be used for setting limits based on temperature.
-	 * We set some relatively safe default value while still allowing
-	 * a comfortably fast charging rate.
-	 */
-	{ .addr = FAST_CHARGE_CURRENT_CFG,
-	  .mask = FAST_CHARGE_CURRENT_SETTING_MASK,
-	  .val = 1950000 / CURRENT_SCALE_FACTOR },
 };
 
 /* Init sequence derived from vendor downstream driver */
@@ -895,7 +954,8 @@ static const struct smb_init_register smb2_init_seq[] = {
 	 */
 	{ .addr = PRE_CHARGE_CURRENT_CFG,
 	  .mask = PRE_CHARGE_CURRENT_SETTING_MASK,
-	  .val = 500000 / CURRENT_SCALE_FACTOR },
+	  /* 20 * step size 25000 uA = 500000 uA */
+	  .val = 20 },
 };
 
 struct smb_match_data pmi8998_match_data = {
@@ -903,6 +963,8 @@ struct smb_match_data pmi8998_match_data = {
 	.init_seq_len = ARRAY_SIZE(smb2_init_seq),
 	.name = "pmi8998",
 	.gen = SMB2,
+	.current_step_size_ua = 25000,
+	.current_limit_max_ua = 4800000,
 };
 
 struct smb_match_data pm660_match_data = {
@@ -910,6 +972,8 @@ struct smb_match_data pm660_match_data = {
 	.init_seq_len = ARRAY_SIZE(smb2_init_seq),
 	.name = "pm660",
 	.gen = SMB2,
+	.current_step_size_ua = 25000,
+	.current_limit_max_ua = 4800000,
 };
 
 struct smb_match_data pm8150b_match_data = {
@@ -917,6 +981,8 @@ struct smb_match_data pm8150b_match_data = {
 	.init_seq_len = ARRAY_SIZE(smb5_init_seq),
 	.name = "pm8150b",
 	.gen = SMB5,
+	.current_step_size_ua = 50000,
+	.current_limit_max_ua = 5000000,
 };
 
 struct smb_match_data pm7250b_match_data = {
@@ -924,6 +990,21 @@ struct smb_match_data pm7250b_match_data = {
 	.init_seq_len = ARRAY_SIZE(smb5_init_seq),
 	.name = "pm7250b",
 	.gen = SMB5,
+	.current_step_size_ua = 50000,
+	.current_limit_max_ua = 5000000,
+	// .buck_scale = 20;
+	// .boost_scale = 40;
+};
+
+struct smb_match_data pmi632_match_data = {
+	.init_seq = smb5_init_seq,
+	.init_seq_len = ARRAY_SIZE(smb5_init_seq),
+	.name = "pmi632",
+	.gen = SMB5,
+	.current_step_size_ua = 50000,
+	.current_limit_max_ua = 3000000,
+	// .buck_scale = 40;
+	// .boost_scale = 80;
 };
 
 
@@ -1008,6 +1089,8 @@ static int smb_probe(struct platform_device *pdev)
 	match_data = (const struct smb_match_data *)device_get_match_data(chip->dev);
 
 	chip->gen = match_data->gen;
+	chip->current_step_size_ua = match_data->current_step_size_ua;
+	chip->current_limit_max_ua = match_data->current_limit_max_ua;
 
 	dev_info(chip->dev, "Generation %s\n", chip->gen == SMB2 ? "SMB2" : "SMB5");
 
@@ -1087,7 +1170,7 @@ static int smb_probe(struct platform_device *pdev)
 	 * reporting.
 	 */
 	rc = regmap_write(chip->regmap, chip->base + FAST_CHARGE_CURRENT_CFG,
-			  1950000 / CURRENT_SCALE_FACTOR);
+			  1950000 / chip->current_step_size_ua);
 	if (rc < 0)
 		return dev_err_probe(chip->dev, rc,
 				     "Couldn't write fast charge current cfg");
@@ -1109,6 +1192,7 @@ static const struct of_device_id smb_match_id_table[] = {
 	{ .compatible = "qcom,pm660-charger", .data = &pm660_match_data },
 	{ .compatible = "qcom,pm7250b-charger", .data = &pm7250b_match_data },
 	{ .compatible = "qcom,pm8150b-charger", .data = &pm8150b_match_data },
+	{ .compatible = "qcom,pmi632-charger", .data = &pmi632_match_data },
 	{ /* sentinal */ }
 };
 MODULE_DEVICE_TABLE(of, smb_match_id_table);
