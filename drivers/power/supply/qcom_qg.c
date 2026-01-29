@@ -52,6 +52,12 @@ static int qcom_qg_get_current(struct qcom_qg_chip *chip, u8 offset, int *val)
 	temp = (s16)(readval[1] << 8 | readval[0]);
 	*val = div_s64((s64)temp * 152588, 1000);
 
+	/*
+	 * PSY API expects charging batteries to report a positive current, which is inverted
+	 * to what the PMIC reports.
+	 */
+	*val = -*val;
+
 	return 0;
 }
 
