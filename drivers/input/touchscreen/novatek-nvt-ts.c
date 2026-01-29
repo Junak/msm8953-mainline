@@ -6,6 +6,7 @@
  * Copyright (c) 2023 Hans de Goede <hdegoede@redhat.com>
  */
 
+#include <drm/drm_panel.h>
 #include <linux/delay.h>
 #include <linux/gpio/consumer.h>
 #include <linux/interrupt.h>
@@ -14,7 +15,6 @@
 #include <linux/input/mt.h>
 #include <linux/input/touchscreen.h>
 #include <linux/module.h>
-
 #include <linux/unaligned.h>
 
 #define NVT_TS_TOUCH_START		0x00
@@ -61,6 +61,12 @@ struct nvt_ts_data {
 	struct touchscreen_properties prop;
 	int max_touches;
 	u8 buf[NVT_TS_TOUCH_SIZE * NVT_TS_MAX_TOUCHES];
+	/*
+	 * Sometimes Novatek touchscreen is paired together with Novatek panel,
+	 * and they need to be powered together in sync.
+	 */
+	struct drm_panel_follower panel_follower;
+	bool is_panel_follower;
 };
 
 static int nvt_ts_read_data(struct i2c_client *client, u8 reg, u8 *data, int count)
@@ -96,6 +102,9 @@ static irqreturn_t nvt_ts_irq(int irq, void *dev_id)
 	int i, error, slot, x, y;
 	bool active;
 	u8 *touch;
+
+	if (!data->input)
+		return IRQ_HANDLED;
 
 	error = nvt_ts_read_data(data->client, NVT_TS_TOUCH_START, data->buf,
 				 data->max_touches * NVT_TS_TOUCH_SIZE);
@@ -155,6 +164,7 @@ static int nvt_ts_start(struct input_dev *dev)
 
 	enable_irq(data->client->irq);
 	gpiod_set_value_cansleep(data->reset_gpio, 0);
+	msleep(100); // TODO: is it really needed? probably
 
 	return 0;
 }
@@ -172,6 +182,9 @@ static int nvt_ts_suspend(struct device *dev)
 {
 	struct nvt_ts_data *data = i2c_get_clientdata(to_i2c_client(dev));
 
+	if (data->is_panel_follower)
+		return 0;
+
 	mutex_lock(&data->input->mutex);
 	if (input_device_enabled(data->input))
 		nvt_ts_stop(data->input);
@@ -184,6 +197,9 @@ static int nvt_ts_resume(struct device *dev)
 {
 	struct nvt_ts_data *data = i2c_get_clientdata(to_i2c_client(dev));
 
+	if (data->is_panel_follower)
+		return 0;
+
 	mutex_lock(&data->input->mutex);
 	if (input_device_enabled(data->input))
 		nvt_ts_start(data->input);
@@ -192,31 +208,16 @@ static int nvt_ts_resume(struct device *dev)
 	return 0;
 }
 
-static DEFINE_SIMPLE_DEV_PM_OPS(nvt_ts_pm_ops, nvt_ts_suspend, nvt_ts_resume);
-
-static int nvt_ts_probe(struct i2c_client *client)
+static int nvt_ts_initial_power_on_and_register_inputdev(struct nvt_ts_data *data)
 {
-	struct device *dev = &client->dev;
+	struct device *dev = &data->client->dev;
 	int error, width, height, irq_type;
-	struct nvt_ts_data *data;
 	const struct nvt_ts_i2c_chip_data *chip;
 	struct input_dev *input;
 
-	if (!client->irq) {
-		dev_err(dev, "Error no irq specified\n");
-		return -EINVAL;
-	}
-
-	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
-	if (!data)
-		return -ENOMEM;
-
-	chip = device_get_match_data(&client->dev);
+	chip = device_get_match_data(dev);
 	if (!chip)
 		return -EINVAL;
-
-	data->client = client;
-	i2c_set_clientdata(client, data);
 
 	/*
 	 * VCC is the analog voltage supply
@@ -278,7 +279,7 @@ static int nvt_ts_probe(struct i2c_client *client)
 	if (!input)
 		return -ENOMEM;
 
-	input->name = client->name;
+	input->name = data->client->name;
 	input->id.bustype = BUS_I2C;
 	input->open = nvt_ts_start;
 	input->close = nvt_ts_stop;
@@ -295,10 +296,11 @@ static int nvt_ts_probe(struct i2c_client *client)
 	data->input = input;
 	input_set_drvdata(input, data);
 
-	error = devm_request_threaded_irq(dev, client->irq, NULL, nvt_ts_irq,
+	error = devm_request_threaded_irq(dev, data->client->irq, NULL,
+					  nvt_ts_irq,
 					  IRQF_ONESHOT | IRQF_NO_AUTOEN |
 						nvt_ts_irq_type[irq_type],
-					  client->name, data);
+					  data->client->name, data);
 	if (error) {
 		dev_err(dev, "failed to request irq: %d\n", error);
 		return error;
@@ -311,6 +313,91 @@ static int nvt_ts_probe(struct i2c_client *client)
 	}
 
 	return 0;
+}
+
+static int on_novatek_panel_prepared(struct drm_panel_follower *follower)
+{
+	struct nvt_ts_data *data = container_of(follower, struct nvt_ts_data, panel_follower);
+	int ret;
+	dev_info(&data->client->dev, "%s\n", __func__); // REMOVEME
+
+	/* Is this the first power on? */
+	if (!data->input) {
+		dev_info(&data->client->dev, "doing initial power on\n"); // REMOVEME
+		ret = nvt_ts_initial_power_on_and_register_inputdev(data);
+		if (ret)
+			return ret;
+	}
+
+	mutex_lock(&data->input->mutex);
+	if (input_device_enabled(data->input))
+		nvt_ts_start(data->input);
+	mutex_unlock(&data->input->mutex);
+
+	return 0;
+}
+
+static int on_novatek_panel_unpreparing(struct drm_panel_follower *follower)
+{
+	struct nvt_ts_data *data = container_of(follower, struct nvt_ts_data, panel_follower);
+	dev_info(&data->client->dev, "%s\n", __func__); // REMOVEME
+
+	mutex_lock(&data->input->mutex);
+	if (input_device_enabled(data->input))
+		nvt_ts_stop(data->input);
+	mutex_unlock(&data->input->mutex);
+
+	return 0;
+}
+
+static const struct drm_panel_follower_funcs nvt_ts_follower_funcs = {
+	.panel_prepared = on_novatek_panel_prepared,
+	.panel_unpreparing = on_novatek_panel_unpreparing,
+};
+
+static DEFINE_SIMPLE_DEV_PM_OPS(nvt_ts_pm_ops, nvt_ts_suspend, nvt_ts_resume);
+
+static int nvt_ts_probe(struct i2c_client *client)
+{
+	struct device *dev = &client->dev;
+	struct nvt_ts_data *data;
+
+	if (!client->irq) {
+		dev_err(dev, "Error no irq specified\n");
+		return -EINVAL;
+	}
+
+	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
+	if (!data)
+		return -ENOMEM;
+
+	data->client = client;
+	i2c_set_clientdata(client, data);
+
+	/* check if "panel = <&...>" is set in DT */
+	if (drm_is_panel_follower(dev)) {
+		/* register self as follower */
+		dev_info(dev, "probing in follower mode\n"); // REMOVEME
+		data->is_panel_follower = true;
+		data->panel_follower.funcs = &nvt_ts_follower_funcs;
+		drm_panel_add_follower(dev, &data->panel_follower);
+		/*
+		 * In this mode, we can't do anything more at this moment.
+		 * Need to wait for callbacks from panel.
+		 */
+		return 0;
+	}
+
+	dev_info(dev, "probing in normal mode\n"); // REMOVEME
+	return nvt_ts_initial_power_on_and_register_inputdev(data);
+}
+
+static void nvt_ts_remove(struct i2c_client *client)
+{
+	struct nvt_ts_data *data = i2c_get_clientdata(client);
+
+	if (data->is_panel_follower)
+		drm_panel_remove_follower(&data->panel_follower);
 }
 
 static const struct nvt_ts_i2c_chip_data nvt_nt11205_ts_data = {
@@ -344,6 +431,7 @@ static struct i2c_driver nvt_ts_driver = {
 		.of_match_table = nvt_ts_of_match,
 	},
 	.probe = nvt_ts_probe,
+	.remove = nvt_ts_remove,
 	.id_table = nvt_ts_i2c_id,
 };
 
