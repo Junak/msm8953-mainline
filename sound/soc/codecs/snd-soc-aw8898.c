@@ -187,7 +187,7 @@ static void aw8898_cold_start(struct aw8898 *aw8898)
 static int aw8898_dev_mode_get(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
 	struct aw8898 *aw8898 = snd_soc_component_get_drvdata(component);
 
 	ucontrol->value.enumerated.item[0] = aw8898->dev_mode;
@@ -198,7 +198,7 @@ static int aw8898_dev_mode_get(struct snd_kcontrol *kcontrol,
 static int aw8898_dev_mode_put(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
 	struct aw8898 *aw8898 = snd_soc_component_get_drvdata(component);
 
 	if (ucontrol->value.enumerated.item[0] > 1)
