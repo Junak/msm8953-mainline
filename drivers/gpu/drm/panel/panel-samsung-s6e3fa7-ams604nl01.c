@@ -8,6 +8,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/regulator/consumer.h>
+#include <linux/fb.h>
 
 #include <drm/drm_mipi_dsi.h>
 #include <drm/drm_modes.h>
@@ -933,7 +934,7 @@ static void s6e3fa7_ams604nl01_gamma_init(struct s6e3fa7_ams604nl01_drv *drv, u8
 }
 
 static void s6e3fa7_ams604nl01_read_eeprom(struct mipi_dsi_multi_context* dsi_ctx,
-				   u8 cmd, u8 offset, u8 *output, u8 len)
+					   u8 cmd, u8 offset, u8 *output, u8 len)
 {
 	int ret;
 	u8 offset_cmd [] = { 0xb0, 0x00 };
@@ -942,7 +943,10 @@ static void s6e3fa7_ams604nl01_read_eeprom(struct mipi_dsi_multi_context* dsi_ct
 		offset_cmd[1] = offset;
 
 		mipi_dsi_generic_write_multi(dsi_ctx, offset_cmd, ARRAY_SIZE(offset_cmd));
-		mipi_dsi_dcs_read_multi(dsi_ctx, cmd, output, len > 8 ? 8 : len);
+		ret = mipi_dsi_dcs_read(dsi_ctx->dsi, cmd, output, len > 8 ? 8 : len);
+		if (ret < 0)
+			dsi_ctx->accum_err = ret;
+
 		if (dsi_ctx->accum_err < 0)
 			return;
 
