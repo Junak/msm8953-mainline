@@ -503,19 +503,8 @@ static struct rpmpd md_s1a_corner_ao = {
 	.key = KEY_CORNER,
 };
 
-static struct rpmpd md_s1a_lvl_ao;
 static struct rpmpd md_s1a_lvl = {
 	.pd = { .name = "md", },
-	.peer = &md_s1a_lvl_ao,
-	.res_type = RPMPD_SMPA,
-	.res_id = 1,
-	.key = KEY_LEVEL,
-};
-
-static struct rpmpd md_s1a_lvl_ao = {
-	.pd = { .name = "md_ao", },
-	.peer = &md_s1a_lvl,
-	.active_only = true,
 	.res_type = RPMPD_SMPA,
 	.res_id = 1,
 	.key = KEY_LEVEL,
@@ -842,6 +831,21 @@ static const struct rpmpd_desc qm215_desc = {
 	.max_state = RPM_SMD_LEVEL_TURBO,
 };
 
+static struct rpmpd *sdm632_rpmpds[] = {
+	[SDM632_VDDMD] =	&md_s1a_lvl,
+	[SDM632_VDDCX] =	&cx_s2a_lvl,
+	[SDM632_VDDCX_AO] =	&cx_s2a_lvl_ao,
+	[SDM632_VDDCX_VFL] =	&cx_s2a_vfl,
+	[SDM632_VDDMX] =	&mx_s7a_lvl,
+	[SDM632_VDDMX_AO] =	&mx_s7a_lvl_ao,
+};
+
+static const struct rpmpd_desc sdm632_desc = {
+	.rpmpds = sdm632_rpmpds,
+	.num_pds = ARRAY_SIZE(sdm632_rpmpds),
+	.max_state = RPM_SMD_LEVEL_TURBO,
+};
+
 static struct rpmpd *sdm660_rpmpds[] = {
 	[RPMPD_VDDCX] =		&cx_rwcx0_lvl,
 	[RPMPD_VDDCX_AO] =	&cx_rwcx0_lvl_ao,
@@ -946,6 +950,7 @@ static const struct of_device_id rpmpd_match_table[] = {
 	{ .compatible = "qcom,qcm2290-rpmpd", .data = &qcm2290_desc },
 	{ .compatible = "qcom,qcs404-rpmpd", .data = &qcs404_desc },
 	{ .compatible = "qcom,qm215-rpmpd", .data = &qm215_desc },
+	{ .compatible = "qcom,sdm632-rpmpd", .data = &sdm632_desc },
 	{ .compatible = "qcom,sdm660-rpmpd", .data = &sdm660_desc },
 	{ .compatible = "qcom,sm6115-rpmpd", .data = &sm6115_desc },
 	{ .compatible = "qcom,sm6125-rpmpd", .data = &sm6125_desc },
