@@ -263,7 +263,6 @@ static const struct camss_subdev_resources ispif_res_8x39 = {
 		   "csi0", "csi0_pix", "csi0_rdi",
 		   "csi1", "csi1_pix", "csi1_rdi",
 		   "csi2", "csi2_pix", "csi2_rdi" },
-	.clock_for_reset = { "vfe0", "csi_vfe0" },
 	.reg = { "ispif", "csi_clk_mux" },
 	.interrupt = { "ispif" },
 };
