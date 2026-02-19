@@ -88,6 +88,15 @@
 		regulator-always-on;
 		regulator-boot-on;
 	};
+
+	vreg_tp_vdig: vreg-tp-vdig {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_tp_vdig";
+		regulator-max-microvolt = <3050000>;
+		regulator-min-microvolt = <3050000>;
+		enable-active-high;
+		gpio = <&tlmm 48 GPIO_ACTIVE_HIGH>;
+	};
 };
 
 &hsusb_phy {
@@ -119,10 +128,10 @@
 
 		touchscreen-size-x = <1080>;
 		touchscreen-size-y = <1920>;
-		status = "okay";
+		status = "disabled";
 	};
 
-	rmi4_ts: touchscreen@70 {         // cannot use now
+	rmi4_ts: touchscreen@70 {
 		reg = <0x70>;
 		compatible = "syna,rmi4-i2c";
 		interrupts-parent = <&tlmm>;
@@ -131,7 +140,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		vdd-supply = <&pm8953_l10>;
+		vdd-supply = <&vreg_tp_vdig>;
 		vio-supply = <&pm8953_l6>;
 
 		pinctrl-0 = <&ts_reset_active &ts_int_active>;
@@ -244,6 +253,15 @@
 &pmi8950_fg {
 	monitored-battery = <&battery>;
 	power-supplies = <&pmi8950_smbcharger>;
+
+	status = "okay";
+};
+
+&pmi8950_haptics {
+	qcom,actuator-type = <HAP_TYPE_ERM>;
+	qcom,brake-pattern = <0x3 0x3 0x0 0x0>;
+	qcom,wave-play-rate-us = <5263>;
+	qcom,wave-shape = <HAP_WAVE_SQUARE>;
 
 	status = "okay";
 };
