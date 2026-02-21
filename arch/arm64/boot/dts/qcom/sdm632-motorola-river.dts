@@ -17,6 +17,16 @@
 	compatible = "motorola,river", "qcom,sdm632";
 	chassis-type = "handset";
 
+	battery: battery {
+		compatible = "simple-battery";
+
+		charge-full-design-microamp-hours = <3000000>;
+		/* XXX: Conservative value, downstream qcom,fastchg-current-ma is 3A */
+		constant-charge-current-max-microamp = <1500000>;
+		voltage-min-design-microvolt = <3400000>;
+		voltage-max-design-microvolt = <4400000>;
+	};
+
 	chosen {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -181,6 +191,12 @@
 	status = "okay";
 };
 
+&pmi632_charger {
+	monitored-battery = <&battery>;
+
+	status = "okay";
+};
+
 &pmi632_gpios {
 	bklt_en_default: bklt-en-default {
 		pins = "gpio7";
@@ -188,6 +204,13 @@
 		power-source = <0x00>;
 		output-high;
 	};
+};
+
+&pmi632_qgauge {
+	monitored-battery = <&battery>;
+	power-supplies = <&pmi632_charger>;
+
+	status = "okay";
 };
 
 &pmi632_typec {
