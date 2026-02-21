@@ -91,11 +91,124 @@
 		};
 	};
 
+	vreg_cam_front_wide_vana_2p8: regulator-cam-front-wide-vana {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_cam_front_wide_vana_2p8";
+
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+
+		gpio = <&tlmm 50 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_sensor_front_reg_default>;
+
+		vin-supply = <&pm8953_l22>;
+
+		regulator-always-on;
+	};
+
 	vph_pwr: vph-pwr-regulator {
 		compatible = "regulator-fixed";
 		regulator-name = "vph_pwr";
 		regulator-always-on;
 		regulator-boot-on;
+	};
+};
+
+&camss {
+	status = "okay";
+	vdda-supply = <&pm8953_s3>;
+
+	ports {
+		port@0 {
+			reg = <0>;
+
+			csiphy0_ep: endpoint {
+				data-lanes = <0 1>;
+				remote-endpoint = <&cam_s5k5e9_ep>;
+			};
+		};
+
+		port@2 {
+			reg = <2>;
+
+			csiphy2_ep: endpoint {
+				clock-lanes = <7>;
+				data-lanes = <0 1 2 3>;
+				remote-endpoint = <&cam_s5k4h7yx_ep>;
+			};
+		};
+	};
+};
+
+&cci {
+	pinctrl-0 = <&cci0_default &cci1_default>;
+	pinctrl-names = "default";
+
+	status = "okay";
+};
+
+&cci_i2c0 {
+	s5k4h7yx@10 { /* Front camera */
+		compatible = "samsung,s5k4h7yx";
+		reg = <0x10>;
+
+		vdda-supply = <&vreg_cam_front_wide_vana_2p8>;
+		vddd-supply = <&pm8953_l23>;
+		vddio-supply = <&pm8953_l6>;
+
+		clocks = <&gcc GCC_CAMSS_MCLK1_CLK>;
+		assigned-clocks = <&gcc GCC_CAMSS_MCLK1_CLK>;
+		assigned-clock-rates = <24000000>;
+
+		reset-gpios = <&tlmm 132 GPIO_ACTIVE_LOW>; /* "standby" downstream */
+		pinctrl-0 = <&camss_mclk1_default &cam_sensor_front_default>;
+		pinctrl-names = "default";
+
+		orientation = <0>;
+		rotation = <90>;
+
+		port {
+			cam_s5k4h7yx_ep: endpoint {
+				data-lanes = <1 2 3 4>;
+				link-frequencies = /bits/ 64 <600000000>; // FIXME
+				remote-endpoint = <&csiphy2_ep>;
+			};
+		};
+	};
+};
+
+&cci_i2c1 {
+	s5k5e9@2d { /* Wide camera */
+		compatible = "samsung,s5k5e9";
+		reg = <0x2d>;
+
+		vana-supply = <&vreg_cam_front_wide_vana_2p8>;
+		vdig-supply = <&pm8953_l23>;
+		vio-supply = <&pm8953_l6>;
+
+		clocks = <&gcc GCC_CAMSS_MCLK2_CLK>;
+		clock-names = "xvclk";
+		clock-frequency = <19200000>;
+		assigned-clocks = <&gcc GCC_CAMSS_MCLK2_CLK>;
+		assigned-clock-rates = <19200000>;
+
+		reset-gpios = <&tlmm 129 GPIO_ACTIVE_HIGH>;
+		pinctrl-0 = <&camss_mclk2_default &cam_sensor_wide_default>;
+		pinctrl-names = "default";
+
+		orientation = <1>;
+		rotation = <270>;
+
+		port {
+			cam_s5k5e9_ep: endpoint {
+				data-lanes = <0 1>;
+				link-frequencies = /bits/ 64 <480000000>;
+				remote-endpoint = <&csiphy0_ep>;
+			};
+		};
 	};
 };
 
@@ -395,6 +508,34 @@
 		function = "gpio";
 		drive-strength = <2>;
 		bias-pull-down;
+	};
+
+	cam_sensor_front_reg_default: cam_sensor_front_reg_default {
+		pins = "gpio50";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	cam_sensor_front_default: cam_sensor_front_default {
+		pins = "gpio132";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	cam_sensor_main_default: cam_sensor_main_default {
+		pins = "gpio40", "gpio47", "gpio35";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	cam_sensor_wide_default: cam_sensor_wide_default {
+		pins = "gpio129";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
 	};
 };
 
