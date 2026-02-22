@@ -336,6 +336,9 @@ static int on_novatek_panel_unpreparing(struct drm_panel_follower *follower)
 	struct nvt_ts_data *data = container_of(follower, struct nvt_ts_data, panel_follower);
 	dev_info(&data->client->dev, "%s\n", __func__); // REMOVEME
 
+	if (!data->input)
+		return 0;
+
 	guard(mutex)(&data->input->mutex);
 	if (input_device_enabled(data->input))
 		nvt_ts_stop(data->input);
