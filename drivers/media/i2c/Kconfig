@@ -767,11 +767,31 @@ config VIDEO_S5K2XX
 	  This is a V4L2 sensor driver for Samsung S5K2-family raw
 	  camera sensors.
 
+config VIDEO_S5K4H7YX
+	tristate "Samsung S5K4H7YX sensor support"
+	depends on OF_GPIO
+	select V4L2_CCI_I2C
+	help
+	  This is a Video4Linux2 sensor driver for the Samsung
+	  S5K4H7YX camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called s5k4h7yx.
+
 config VIDEO_S5K5BAF
 	tristate "Samsung S5K5BAF sensor support"
 	help
 	  This is a V4L2 sensor driver for Samsung S5K5BAF 2M
 	  camera sensor with an embedded SoC image signal processor.
+
+config VIDEO_S5K5E9
+	tristate "Samsung S5K5E9 sensor support"
+	help
+	  This is a V4L2 sensor driver for Samsung S5K5E9 raw
+	  camera sensor.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called s5k5e9.
 
 config VIDEO_S5K6A3
 	tristate "Samsung S5K6A3 sensor support"
