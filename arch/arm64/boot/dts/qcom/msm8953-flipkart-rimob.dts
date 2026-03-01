@@ -89,7 +89,7 @@
 };
 
 &gpu_zap_shader {
-	firmware-name = "qcom/msm8953/billion/rimob/a506_zap.mdt";
+	firmware-name = "qcom/msm8953/flipkart/rimob/a506_zap.mdt";
 };
 
 &hsusb_phy {
@@ -148,7 +148,7 @@
 	status = "okay";
 
 	panel: panel@0 {
-		compatible = "billion,rimob-nt35532-cs";
+		compatible = "flipkart,rimob-nt35532-cs";
 		reg = <0>;
 
 		backlight = <&pmi8950_wled>;
