@@ -300,6 +300,11 @@
 	status = "okay";
 };
 
+&pmi632_charger {
+	monitored-battery = <&battery>;
+	status = "okay";
+};
+
 &q6afedai {
 	dai@127 {
 		reg = <QUINARY_MI2S_RX>;
