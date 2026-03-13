@@ -44,6 +44,26 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
+		pmi632_charger: charger@1000 {
+			compatible = "qcom,pmi632-charger";
+			reg = <0x1000>;
+			interrupts = <0x2 0x13 0x4 IRQ_TYPE_EDGE_BOTH>,
+				     <0x2 0x12 0x2 IRQ_TYPE_EDGE_BOTH>,
+				     <0x2 0x16 0x1 IRQ_TYPE_EDGE_RISING>,
+				     <0x2 0x13 0x7 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "usb-plugin",
+					  "bat-ov",
+					  "wdog-bark",
+					  "usbin-icl-change";
+
+			io-channels = <&pmi632_adc ADC5_USB_IN_I>,
+				      <&pmi632_adc ADC5_USB_IN_V_16>;
+			io-channel-names = "usbin_i",
+					   "usbin_v";
+
+			status = "disabled";
+		};
+
 		pmi632_vbus: usb-vbus-regulator@1100 {
 			compatible = "qcom,pmi632-vbus-reg", "qcom,pm8150b-vbus-reg";
 			reg = <0x1100>;
