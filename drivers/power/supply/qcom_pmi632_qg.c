@@ -198,7 +198,12 @@ static int qg_read_ibat(struct pmi632_qg *qg, int *ibat_ua)
 	if (ret)
 		return ret;
 
-	*ibat_ua = QG_I_RAW_TO_UA(sign_extend32(raw, 15));
+	/*
+	 * Hardware convention: positive = discharge, negative = charge.
+	 * Power supply class convention (ABI): positive = charge, negative = discharge.
+	 * Negate to match the ABI.
+	 */
+	*ibat_ua = -QG_I_RAW_TO_UA(sign_extend32(raw, 15));
 	return 0;
 }
 
