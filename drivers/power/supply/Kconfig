@@ -1162,6 +1162,19 @@ config CHARGER_QCOM_SMB2
 	  adds support for the SMB2 switch mode battery charger found
 	  in PMI8998 and related PMICs.
 
+config CHARGER_QCOM_SMB5
+	tristate "Qualcomm PMI632 PMIC charger driver"
+	depends on MFD_SPMI_PMIC
+	depends on IIO
+	help
+	  Say Y here to enable the Qualcomm PMI632 SMB5 charger driver.
+	  This adds support for the SMB5 switch mode battery charger found
+	  in PMI632 and related PMICs, providing USB charger detection,
+	  input current limiting, and battery charging control.
+
+	  To compile this driver as module, choose M here: the
+	  module will be called qcom_pmi632_charger.
+
 config FUEL_GAUGE_MM8013
 	tristate "Mitsumi MM8013 fuel gauge driver"
 	depends on I2C
