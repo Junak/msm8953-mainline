@@ -225,5 +225,11 @@
 			reg = <0x5700>;
 			status = "disabled";
 		};
+
+		pmi632_flash: led-controller@d300 {
+			compatible = "qcom,pmi632-flash-led", "qcom,spmi-flash-led";
+			reg = <0xd300>;
+			status = "disabled";
+		};
 	};
 };
