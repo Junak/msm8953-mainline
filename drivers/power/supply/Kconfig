@@ -742,6 +742,19 @@ config BATTERY_PM8916_BMS_VM
 	  To compile this driver as module, choose M here: the
 	  module will be called pm8916_bms_vm.
 
+config BATTERY_PMI632_QG
+	tristate "Qualcomm PMI632 QGauge fuel gauge support"
+	depends on MFD_SPMI_PMIC || COMPILE_TEST
+	depends on IIO
+	help
+	  Say Y to add support for the QGauge (QG) fuel gauge block found
+	  in the Qualcomm PMI632 PMIC. This hardware provides battery
+	  voltage and current FIFO sampling, open circuit voltage (OCV)
+	  measurement, and coulomb counting for battery state estimation.
+
+	  To compile this driver as module, choose M here: the
+	  module will be called qcom_pmi632_qg.
+
 config CHARGER_PM8916_LBC
 	tristate "Qualcomm PM8916 Linear Battery Charger support"
 	depends on MFD_SPMI_PMIC || COMPILE_TEST

@@ -96,6 +96,7 @@ obj-$(CONFIG_CHARGER_MT6360)	+= mt6360_charger.o
 obj-$(CONFIG_CHARGER_MT6370)	+= mt6370-charger.o
 obj-$(CONFIG_CHARGER_QCOM_SMBB)	+= qcom_smbb.o
 obj-$(CONFIG_BATTERY_PM8916_BMS_VM)	+= pm8916_bms_vm.o
+obj-$(CONFIG_BATTERY_PMI632_QG)		+= qcom_pmi632_qg.o
 obj-$(CONFIG_CHARGER_PM8916_LBC)	+= pm8916_lbc.o
 obj-$(CONFIG_BATTERY_PMI8994_FG)	+= pmi8994_fg.o
 obj-$(CONFIG_CHARGER_QCOM_SMBCHG)	+= qcom-smbchg.o
