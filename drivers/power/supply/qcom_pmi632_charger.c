@@ -25,7 +25,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/pm_wakeirq.h>
-#include <linux/of.h>
+#include <linux/property.h>
 #include <linux/power_supply.h>
 #include <linux/regmap.h>
 #include <linux/types.h>
@@ -723,7 +723,7 @@ static int smb5_probe(struct platform_device *pdev)
 		return rc;
 
 	supply_config.drv_data = chip;
-	supply_config.of_node = pdev->dev.of_node;
+	supply_config.fwnode = dev_fwnode(&pdev->dev);
 
 	desc = devm_kzalloc(chip->dev, sizeof(smb5_psy_desc), GFP_KERNEL);
 	if (!desc)
