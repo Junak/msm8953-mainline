@@ -568,7 +568,7 @@ static int pmi632_qg_probe(struct platform_device *pdev)
 
 	/* Register power supply */
 	psy_cfg.drv_data = qg;
-	psy_cfg.of_node = dev->of_node;
+	psy_cfg.fwnode = dev_fwnode(dev);
 
 	qg->psy = devm_power_supply_register(dev, &qg_psy_desc, &psy_cfg);
 	if (IS_ERR(qg->psy))
