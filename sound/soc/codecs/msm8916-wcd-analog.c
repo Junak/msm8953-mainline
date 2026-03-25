@@ -224,6 +224,8 @@
 #define CDC_A_RX_HPH_R_PA_DAC_CTL	(0xf19D)
 #define RX_HPH_R_PA_DAC_CTL_DATA_RESET	BIT(1)
 #define RX_HPH_R_PA_DAC_CTL_DATA_RESET_MASK BIT(1)
+#define CDC_A_RX_HPH_L_TEST		(0xf19A)
+#define CDC_A_RX_HPH_R_TEST		(0xf19C)
 
 #define CDC_A_RX_EAR_CTL			(0xf19E)
 #define RX_EAR_CTL_SPK_VBAT_LDO_EN_MASK		BIT(0)
@@ -723,6 +725,48 @@ static int pm8916_wcd_analog_enable_spk_pa(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static int pm8916_wcd_analog_enable_hph_pa(struct snd_soc_dapm_widget *w,
+					  struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
+	struct pm8916_wcd_analog_priv *wcd = snd_soc_component_get_drvdata(component);
+	u32 other_bit;
+	u32 hph_test_reg = (w->shift == 4) ?
+		CDC_A_RX_HPH_R_TEST : CDC_A_RX_HPH_L_TEST;
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		if (wcd->pmic_rev == 0 && wcd->codec_version >= 3) {
+			snd_soc_component_update_bits(component,
+					CDC_A_RX_HPH_BIAS_CNP, 0xF0, 0x20);
+		}
+		break;
+	case SND_SOC_DAPM_POST_PMU:
+		usleep_range(7000, 7500);
+		snd_soc_component_update_bits(component, hph_test_reg, 0x04, 0x04);
+		break;
+	case SND_SOC_DAPM_PRE_PMD:
+		usleep_range(10000, 12000);
+		snd_soc_component_update_bits(component, hph_test_reg, 0x04, 0x00);
+
+		if (wcd->pmic_rev == 0 && wcd->codec_version >= 3) {
+			snd_soc_component_update_bits(component,
+					CDC_A_RX_HPH_BIAS_CNP, 0xf0, 0x30);
+		}
+
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		other_bit = BIT((w->shift == 4) ? 5 : 4);
+		/* If both HPH PAs are shutting down wait after both are down */
+		if (!(snd_soc_component_read(component, w->reg) & other_bit))
+			msleep(20);
+
+		break;
+	}
+
+	return 0;
+}
+
 static int pm8916_wcd_analog_enable_ear_pa(struct snd_soc_dapm_widget *w,
 					    struct snd_kcontrol *kcontrol,
 					    int event)
@@ -975,11 +1019,17 @@ static const struct snd_soc_dapm_widget pm8916_wcd_analog_dapm_widgets[] = {
 	SND_SOC_DAPM_MUX("EAR_S", SND_SOC_NOPM, 0, 0, &ear_mux),
 	SND_SOC_DAPM_SUPPLY("EAR CP", CDC_A_NCP_EN, 4, 0, NULL, 0),
 
-	SND_SOC_DAPM_PGA("HPHL PA", CDC_A_RX_HPH_CNP_EN, 5, 0, NULL, 0),
+	SND_SOC_DAPM_PGA_E("HPHL PA", CDC_A_RX_HPH_CNP_EN, 5, 0, NULL, 0,
+			   pm8916_wcd_analog_enable_hph_pa,
+			   SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU |
+			   SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_MUX("HPHL", SND_SOC_NOPM, 0, 0, &hphl_mux),
 	SND_SOC_DAPM_MIXER("HPHL DAC", CDC_A_RX_HPH_L_PA_DAC_CTL, 3, 0, NULL,
 			   0),
-	SND_SOC_DAPM_PGA("HPHR PA", CDC_A_RX_HPH_CNP_EN, 4, 0, NULL, 0),
+	SND_SOC_DAPM_PGA_E("HPHR PA", CDC_A_RX_HPH_CNP_EN, 4, 0, NULL, 0,
+			   pm8916_wcd_analog_enable_hph_pa,
+			   SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU |
+			   SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_MUX("HPHR", SND_SOC_NOPM, 0, 0, &hphr_mux),
 	SND_SOC_DAPM_MIXER("HPHR DAC", CDC_A_RX_HPH_R_PA_DAC_CTL, 3, 0, NULL,
 			   0),
