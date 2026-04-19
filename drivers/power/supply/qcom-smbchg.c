@@ -16,6 +16,7 @@
 #include <linux/of_irq.h>
 #include <linux/interrupt.h>
 #include <linux/cleanup.h>
+#include <linux/delay.h>
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
@@ -52,6 +53,7 @@
 	(__fcs_i - 1);							\
 })
 
+#define SDP_CURRENT_UA 500000
 
 /**
  * @brief smbchg_usb_is_present() - Check for USB presence
@@ -110,6 +112,191 @@ static int smbchg_usb_enable(struct smbchg_chip *chip, bool enable)
 			enable ? "en" : "dis", ERR_PTR(ret));
 
 	return ret;
+}
+
+static int smbchg_usb_path_for_otg(struct smbchg_chip *chip, bool enable)
+{
+	int ret, restore_ret;
+
+	if (enable) {
+		if (chip->otg_usb_path_configured)
+			return 0;
+
+		ret = regmap_read(chip->regmap,
+				  chip->base + SMBCHG_USB_CHGPTH_CFG,
+				  &chip->otg_original_usb_cfg);
+		if (ret) {
+			dev_err(chip->dev,
+				"Failed to read USB charge path config: %pe\n",
+				ERR_PTR(ret));
+			return ret;
+		}
+
+		ret = regmap_read(chip->regmap,
+				  chip->base + SMBCHG_USB_CHGPTH_USBIN_CHGR_CFG,
+				  &chip->otg_original_usbin_chgr_cfg);
+		if (ret) {
+			dev_err(chip->dev,
+				"Failed to read USBIN charger config: %pe\n",
+				ERR_PTR(ret));
+			return ret;
+		}
+
+		ret = qcom_pmic_sec_masked_write(
+			chip->regmap, chip->base + SMBCHG_USB_CHGPTH_CFG,
+			HVDCP_EN_BIT, 0);
+		if (ret) {
+			dev_err(chip->dev,
+				"Failed to disable HVDCP during OTG: %pe\n",
+				ERR_PTR(ret));
+			return ret;
+		}
+
+		ret = qcom_pmic_sec_masked_write(
+			chip->regmap,
+			chip->base + SMBCHG_USB_CHGPTH_USBIN_CHGR_CFG,
+			0xff, USBIN_ADAPTER_9V);
+		if (ret) {
+			dev_err(chip->dev,
+				"Failed to set USBIN allowance for OTG: %pe\n",
+				ERR_PTR(ret));
+
+			restore_ret = qcom_pmic_sec_masked_write(
+				chip->regmap,
+				chip->base + SMBCHG_USB_CHGPTH_CFG,
+				HVDCP_EN_BIT,
+				chip->otg_original_usb_cfg & HVDCP_EN_BIT);
+			if (restore_ret)
+				dev_err(chip->dev,
+					"Failed to restore USB config after OTG setup failure: %pe\n",
+					ERR_PTR(restore_ret));
+
+			return ret;
+		}
+
+		chip->otg_usb_path_configured = true;
+		return 0;
+	}
+
+	if (!chip->otg_usb_path_configured)
+		return 0;
+
+	ret = qcom_pmic_sec_masked_write(
+		chip->regmap, chip->base + SMBCHG_USB_CHGPTH_USBIN_CHGR_CFG,
+		0xff, chip->otg_original_usbin_chgr_cfg & 0xff);
+	if (ret)
+		dev_err(chip->dev,
+			"Failed to restore USBIN charger config after OTG: %pe\n",
+			ERR_PTR(ret));
+
+	restore_ret = qcom_pmic_sec_masked_write(
+		chip->regmap, chip->base + SMBCHG_USB_CHGPTH_CFG,
+		HVDCP_EN_BIT, chip->otg_original_usb_cfg & HVDCP_EN_BIT);
+	if (restore_ret)
+		dev_err(chip->dev,
+			"Failed to restore USB charge path config after OTG: %pe\n",
+			ERR_PTR(restore_ret));
+
+	if (!ret && !restore_ret)
+		chip->otg_usb_path_configured = false;
+
+	return ret ?: restore_ret;
+}
+
+static int smbchg_otg_hw_for_boost(struct smbchg_chip *chip, bool enable)
+{
+	int ret, restore_ret;
+
+	if (enable) {
+		if (chip->otg_hw_configured)
+			return 0;
+
+		ret = regmap_read(chip->regmap,
+				  chip->base + SMBCHG_OTG_OTG_CFG,
+				  &chip->otg_original_otg_cfg);
+		if (ret) {
+			dev_err(chip->dev,
+				"Failed to read OTG config: %pe\n",
+				ERR_PTR(ret));
+			return ret;
+		}
+
+		ret = regmap_read(chip->regmap,
+				  chip->base + SMBCHG_OTG_ICFG,
+				  &chip->otg_original_otg_icfg);
+		if (ret) {
+			dev_err(chip->dev,
+				"Failed to read OTG current config: %pe\n",
+				ERR_PTR(ret));
+			return ret;
+		}
+
+		/*
+		 * Android treats PMI8950 as SCHG_LITE for OTG boost. Apply this
+		 * only while sourcing VBUS so charger/sink mode can keep the PMIC
+		 * default OTG configuration.
+		 */
+		ret = qcom_pmic_sec_masked_write(
+			chip->regmap, chip->base + SMBCHG_OTG_OTG_CFG,
+			OTG_HICCUP_ENABLED_BIT, OTG_HICCUP_ENABLED_BIT);
+		if (ret) {
+			dev_err(chip->dev,
+				"Failed to enable OTG hiccup mode: %pe\n",
+				ERR_PTR(ret));
+			return ret;
+		}
+
+		ret = qcom_pmic_sec_masked_write(
+			chip->regmap, chip->base + SMBCHG_OTG_OTG_CFG,
+			OTG_EN_CTRL_MASK, OTG_CMD_CTRL_RID_EN);
+		if (ret) {
+			dev_err(chip->dev,
+				"Failed to configure OTG command control: %pe\n",
+				ERR_PTR(ret));
+			goto restore_cfg;
+		}
+
+		ret = qcom_pmic_sec_masked_write(
+			chip->regmap, chip->base + SMBCHG_OTG_ICFG,
+			OTG_ILIMIT_MASK, OTG_ILIMIT_1000MA);
+		if (ret) {
+			dev_err(chip->dev,
+				"Failed to configure OTG current limit: %pe\n",
+				ERR_PTR(ret));
+			goto restore_cfg;
+		}
+
+		chip->otg_hw_configured = true;
+		return 0;
+	}
+
+	if (!chip->otg_hw_configured)
+		return 0;
+
+	ret = qcom_pmic_sec_masked_write(
+		chip->regmap, chip->base + SMBCHG_OTG_ICFG,
+		OTG_ILIMIT_MASK,
+		chip->otg_original_otg_icfg & OTG_ILIMIT_MASK);
+	if (ret)
+		dev_err(chip->dev,
+			"Failed to restore OTG current config after OTG: %pe\n",
+			ERR_PTR(ret));
+
+restore_cfg:
+	restore_ret = qcom_pmic_sec_masked_write(
+		chip->regmap, chip->base + SMBCHG_OTG_OTG_CFG,
+		OTG_HICCUP_ENABLED_BIT | OTG_EN_CTRL_MASK,
+		chip->otg_original_otg_cfg &
+			(OTG_HICCUP_ENABLED_BIT | OTG_EN_CTRL_MASK));
+	if (restore_ret)
+		dev_err(chip->dev,
+			"Failed to restore OTG config after OTG: %pe\n",
+			ERR_PTR(restore_ret));
+
+	if (!ret && !restore_ret)
+		chip->otg_hw_configured = false;
+
+	return ret ?: restore_ret;
 }
 
 /**
@@ -738,12 +925,133 @@ static int smbchg_otg_switch(struct smbchg_chip *chip, bool enable)
 	dev_dbg(chip->dev, "%sabling OTG VBUS regulator",
 			enable ? "En" : "Dis");
 
+	if (enable && !chip->otg_usb_input_suspended) {
+		ret = smbchg_usb_enable(chip, false);
+		if (ret) {
+			dev_err(chip->dev,
+				"Failed to suspend USB input before OTG: %d\n",
+				ret);
+			return ret;
+		}
+
+		chip->otg_usb_input_suspended = true;
+		msleep(20);
+	}
+
+	if (enable) {
+		ret = smbchg_usb_path_for_otg(chip, true);
+		if (ret) {
+			if (chip->otg_usb_input_suspended) {
+				int usb_ret;
+
+				usb_ret = smbchg_usb_enable(chip, true);
+				if (usb_ret)
+					dev_err(chip->dev,
+						"Failed to restore USB input after OTG setup failure: %d\n",
+						usb_ret);
+				else
+					chip->otg_usb_input_suspended = false;
+			}
+
+			return ret;
+		}
+
+		msleep(20);
+
+		ret = smbchg_otg_hw_for_boost(chip, true);
+		if (ret) {
+			smbchg_usb_path_for_otg(chip, false);
+			if (chip->otg_usb_input_suspended) {
+				int usb_ret;
+
+				usb_ret = smbchg_usb_enable(chip, true);
+				if (usb_ret)
+					dev_err(chip->dev,
+						"Failed to restore USB input after OTG setup failure: %d\n",
+						usb_ret);
+				else
+					chip->otg_usb_input_suspended = false;
+			}
+
+			return ret;
+		}
+
+		msleep(20);
+	}
+
+	if (enable && !chip->otg_pulse_skip_disabled) {
+		ret = qcom_pmic_sec_masked_write(chip->regmap,
+				 chip->base + SMBCHG_OTG_TRIM6,
+				 OTG_TRIM6_TR_ENB_SKIP_BIT,
+				 OTG_TRIM6_TR_ENB_SKIP_BIT);
+		if (ret) {
+				dev_err(chip->dev,
+					"Failed to disable OTG pulse skip: %d\n", ret);
+			smbchg_otg_hw_for_boost(chip, false);
+			smbchg_usb_path_for_otg(chip, false);
+			if (chip->otg_usb_input_suspended) {
+				int usb_ret;
+
+				usb_ret = smbchg_usb_enable(chip, true);
+				if (usb_ret)
+					dev_err(chip->dev,
+						"Failed to restore USB input after OTG setup failure: %d\n",
+						usb_ret);
+				else
+					chip->otg_usb_input_suspended = false;
+			}
+			return ret;
+		}
+
+		chip->otg_pulse_skip_disabled = true;
+		msleep(20);
+	}
+
 	ret = regmap_update_bits(chip->regmap,
 				 chip->base + SMBCHG_BAT_IF_CMD_CHG, OTG_EN_BIT,
 				 enable ? OTG_EN_BIT : 0);
 	if (ret)
 		dev_err(chip->dev, "Failed to %sable OTG regulator: %d\n",
 			enable ? "en" : "dis", ret);
+
+	if (!enable && chip->otg_hw_configured) {
+		int hw_ret;
+
+		hw_ret = smbchg_otg_hw_for_boost(chip, false);
+		if (hw_ret && !ret)
+			ret = hw_ret;
+	}
+
+	if (!enable && chip->otg_usb_path_configured) {
+		int path_ret;
+
+		path_ret = smbchg_usb_path_for_otg(chip, false);
+		if (path_ret && !ret)
+			ret = path_ret;
+	}
+
+	if (!enable && chip->otg_usb_input_suspended) {
+		int usb_ret;
+
+		usb_ret = smbchg_usb_enable(chip, true);
+		if (usb_ret)
+			dev_err(chip->dev,
+				"Failed to restore USB input after OTG: %d\n",
+				usb_ret);
+		else
+			chip->otg_usb_input_suspended = false;
+	}
+
+	if (!ret && !enable && chip->otg_pulse_skip_disabled) {
+		ret = qcom_pmic_sec_masked_write(chip->regmap,
+				 chip->base + SMBCHG_OTG_TRIM6,
+				 OTG_TRIM6_TR_ENB_SKIP_BIT, 0);
+		if (ret)
+			dev_err(chip->dev,
+				"Failed to enable OTG pulse skip: %d\n", ret);
+		else
+			chip->otg_pulse_skip_disabled = false;
+	}
 
 	return ret;
 }
@@ -918,13 +1226,24 @@ static void smbchg_detect_work(struct work_struct *work)
 		smbchg_otg_switch(chip, false);
 
 	/*
-	 * Prepare for running AICL to find a suitable input current
-	 * limit if connected to a DCP or a CDP
+	 * SDPs need the dedicated low-current USB 2.0 full-current mode.
+	 * Leaving the charger in HC/AICL mode can keep a stale high-current
+	 * limit from a previous charger and results in a present-but-weak PC
+	 * charge path.
 	 */
-	if (usb_present && (usb_type == POWER_SUPPLY_USB_TYPE_DCP ||
-			    usb_type == POWER_SUPPLY_USB_TYPE_CDP)) {
+	if (usb_present && !otg_present &&
+	    usb_type == POWER_SUPPLY_USB_TYPE_SDP) {
+		ret = smbchg_usb_set_ilim(chip, SDP_CURRENT_UA);
+		if (ret < 0) {
+			dev_err(chip->dev,
+				"Failed to set SDP input current limit: %pe\n",
+				ERR_PTR(ret));
+			return;
+		}
+	} else if (usb_present && (usb_type == POWER_SUPPLY_USB_TYPE_DCP ||
+				   usb_type == POWER_SUPPLY_USB_TYPE_CDP)) {
 		/*
-		 * Enable AICL to find a suitable current limit for the
+		 * Prepare AICL to find a suitable input current limit for the
 		 * newly plugged into port.
 		 */
 		ret = smbchg_usb_aicl_enable(chip);
@@ -1481,7 +1800,7 @@ static int smbchg_init(struct smbchg_chip *chip)
 		chip->regmap, chip->base + SMBCHG_CHGR_CHGR_CFG2,
 		CHARGER_INHIBIT_BIT | AUTO_RECHG_BIT | I_TERM_BIT |
 			P2F_CHG_TRAN_BIT | CHG_EN_SRC_BIT,
-		CHG_INHIBIT_EN | AUTO_RCHG_EN | CURRENT_TERM_EN |
+		CHG_INHIBIT_DIS | AUTO_RCHG_EN | CURRENT_TERM_EN |
 			PRE_FAST_AUTO | CHG_EN_SRC_CMD);
 	if (ret)
 		return ret;
