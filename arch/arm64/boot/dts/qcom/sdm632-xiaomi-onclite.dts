@@ -148,6 +148,30 @@
 &i2c_3 {
 	status = "okay";
 
+	touchscreen@14 {
+		compatible = "goodix,gt1x";
+		reg = <0x14>;
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <65 IRQ_TYPE_EDGE_FALLING>;
+
+		irq-gpios = <&tlmm 65 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&tlmm 64 GPIO_ACTIVE_LOW>;
+
+		pinctrl-0 = <&ts_reset_active &ts_int_active>;
+		pinctrl-1 = <&ts_reset_suspend &ts_int_suspend>;
+		pinctrl-names = "default", "sleep";
+
+		vdd-supply = <&pm8953_l10>;
+		iovcc-supply = <&pm8953_l6>;
+
+		touchscreen-size-x = <720>;
+		touchscreen-size-y = <1520>;
+
+		status = "okay";
+	};
+
+	/* Focaltech variant - disabled by default for Goodix units */
 	touchscreen@38 {
 		compatible = "edt,edt-ft5406";
 		reg = <0x38>;
@@ -167,7 +191,7 @@
 		touchscreen-size-x = <720>;
 		touchscreen-size-y = <1520>;
 
-		status = "okay";
+		status = "disabled";
 	};
 };
 
