@@ -510,6 +510,12 @@
 	remote-endpoint = <&pmi632_hs_in>;
 };
 
+&venus {
+	firmware-name = "qcom/msm8953/fairphone/fp3/venus.mbn";
+
+	status = "okay";
+};
+
 &wcnss {
 	firmware-name = "qcom/msm8953/fairphone/fp3/wcnss.mbn";
 	vddpx-supply = <&pm8953_l5>;
