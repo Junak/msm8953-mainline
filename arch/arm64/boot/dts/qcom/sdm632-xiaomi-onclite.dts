@@ -148,8 +148,9 @@
 &i2c_3 {
 	status = "okay";
 
+	/* Goodix variant - disabled by default */
 	touchscreen@14 {
-		compatible = "goodix,gt1x";
+		compatible = "goodix,gt1151";
 		reg = <0x14>;
 
 		interrupt-parent = <&tlmm>;
@@ -168,10 +169,9 @@
 		touchscreen-size-x = <720>;
 		touchscreen-size-y = <1520>;
 
-		status = "okay";
+		status = "disabled";
 	};
 
-	/* Focaltech variant - disabled by default for Goodix units */
 	touchscreen@38 {
 		compatible = "edt,edt-ft5406";
 		reg = <0x38>;
@@ -191,7 +191,7 @@
 		touchscreen-size-x = <720>;
 		touchscreen-size-y = <1520>;
 
-		status = "disabled";
+		status = "okay";
 	};
 };
 
