@@ -257,8 +257,6 @@ struct smbchg_chip {
 	struct mutex otg_lock;
 
 	const struct smbchg_data *data;
-
-	bool smbchg_lite;
 };
 
 struct smbchg_irq {
@@ -273,6 +271,7 @@ struct smbchg_data {
 	unsigned int ilim_table_len;
 
 	bool reset_otg_on_oc;
+	bool smbchg_lite;
 };
 
 static const int smbchg_fv_table[] = {
@@ -415,6 +414,16 @@ static const int smbchg_ilim_table_pmi8996[] = {
 	2800000,
 	2900000,
 	3000000
+};
+
+static const struct smbchg_data smbchg_pmi8950_data = {
+	.iterm_table = smbchg_iterm_table_pmi8994,
+	.iterm_table_len = ARRAY_SIZE(smbchg_iterm_table_pmi8994),
+	.ilim_table = smbchg_ilim_table_pmi8994,
+	.ilim_table_len = ARRAY_SIZE(smbchg_ilim_table_pmi8994),
+
+	.reset_otg_on_oc = true,
+	.smbchg_lite = true
 };
 
 static const struct smbchg_data smbchg_pmi8994_data = {

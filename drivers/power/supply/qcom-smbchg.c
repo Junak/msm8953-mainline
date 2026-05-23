@@ -692,7 +692,7 @@ static bool smbchg_otg_is_present(struct smbchg_chip *chip)
 	u16 usb_id;
 	int ret;
 
-	if (chip->smbchg_lite) {
+	if (chip->data->smbchg_lite) {
 		ret = regmap_read(chip->regmap, chip->base + SMBCHG_OTG_RT_STS, &value);
 		dev_vdbg(chip->dev, "0x%04x read on RT_STS\n", value);
 		return !!(value & BIT(2));
@@ -1656,8 +1656,6 @@ static int smbchg_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	chip->smbchg_lite = of_property_read_bool(chip->dev->of_node, "smbchg-lite");
-
 	/* Initialize extcon */
 	chip->edev = devm_extcon_dev_allocate(chip->dev, smbchg_extcon_cable);
 	if (IS_ERR(chip->edev)) {
@@ -1756,6 +1754,7 @@ static SIMPLE_DEV_PM_OPS(smbchg_pm_ops,
 		smbchg_system_resume);
 
 static const struct of_device_id smbchg_id_table[] = {
+	{ .compatible = "qcom,pmi8950-smbchg", .data = &smbchg_pmi8950_data },
 	{ .compatible = "qcom,pmi8994-smbchg", .data = &smbchg_pmi8994_data },
 	{ .compatible = "qcom,pmi8996-smbchg", .data = &smbchg_pmi8996_data },
 	{}
