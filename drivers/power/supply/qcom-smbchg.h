@@ -21,6 +21,7 @@
 /* OTG */
 #define SMBCHG_OTG_RT_STS			0x110
 #define SMBCHG_OTG_OTG_CFG			0x1f1
+#define SMBCHG_OTG_ICFG			0x1f3
 #define SMBCHG_OTG_TRIM6			0x1f6
 #define SMBCHG_OTG_LOW_PWR_OPTIONS		0x1ff
 
@@ -112,6 +113,16 @@
 #define OTG_EN_BIT			BIT(0)
 #define CHG_EN_BIT			BIT(1)
 
+/* OTG_CFG bits */
+#define OTG_HICCUP_ENABLED_BIT		BIT(6)
+#define OTG_EN_CTRL_MASK		GENMASK(3, 2)
+
+/* OTG_ICFG bits */
+#define OTG_ILIMIT_MASK			GENMASK(1, 0)
+
+/* OTG_TRIM6 bits */
+#define OTG_TRIM6_TR_ENB_SKIP_BIT	BIT(2)
+
 /* BAT_IF_RT_STS bits */
 #define HOT_BAT_HARD_BIT		BIT(0)
 #define HOT_BAT_SOFT_BIT		BIT(1)
@@ -130,6 +141,7 @@
 /* USB_CHGPTH_CFG bits */
 #define USB51AC_CTRL			BIT(1)
 #define USB51_COMMAND_POL		BIT(2)
+#define HVDCP_EN_BIT			BIT(3)
 #define CFG_USB3P0_SEL_BIT		BIT(7)
 
 /* USB_CHGPTH_RT_STS bits */
@@ -154,6 +166,9 @@
 /* USB_CHGPTH_APSD_CFG bits */
 #define USB_CHGPTH_APSD_EN		BIT(0)
 
+/* USB_CHGPTH_USBIN_CHGR_CFG values */
+#define USBIN_ADAPTER_9V		0x3
+
 /* MISC_IDEV_STS bits */
 #define FMB_STS_MASK			GENMASK(3, 0)
 
@@ -163,6 +178,12 @@
 #define AICL_RERUN_USB_BIT		BIT(5)
 
 /* Values */
+/* OTG_CFG values */
+#define OTG_CMD_CTRL_RID_EN		BIT(3)
+
+/* OTG_ICFG values */
+#define OTG_ILIMIT_1000MA		GENMASK(1, 0)
+
 /* CHGR_STS values */
 #define CHG_TYPE_SHIFT			1
 #define BATT_NOT_CHG_VAL		0x0
@@ -244,6 +265,7 @@ struct smbchg_chip {
 	struct regulator_desc otg_rdesc;
 	struct regulator_dev *otg_reg;
 	int otg_resets;
+
 
 	struct extcon_dev *edev;
 

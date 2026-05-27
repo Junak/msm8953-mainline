@@ -16,6 +16,7 @@
 #include <linux/of_irq.h>
 #include <linux/interrupt.h>
 #include <linux/cleanup.h>
+#include <linux/delay.h>
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
@@ -52,6 +53,7 @@
 	(__fcs_i - 1);							\
 })
 
+#define SDP_CURRENT_UA 500000
 
 /**
  * @brief smbchg_usb_is_present() - Check for USB presence
@@ -111,6 +113,7 @@ static int smbchg_usb_enable(struct smbchg_chip *chip, bool enable)
 
 	return ret;
 }
+
 
 /**
  * @brief smbchg_usb_get_type() - Get USB port type
@@ -371,12 +374,18 @@ static int smbchg_usb_set_ilim(struct smbchg_chip *chip, int current_ua)
 	size_t i;
 	int ret;
 
-	/*
-	 * Disable USB charge path if the requested current limit is
-	 * lower than the minimum supported limit.
-	 */
-	if (current_ua < smbchg_lc_ilim_options[0])
+	if (current_ua < smbchg_lc_ilim_options[0]) {
+		enum power_supply_usb_type usb_type = smbchg_usb_get_type(chip);
+
+		if (usb_type == POWER_SUPPLY_USB_TYPE_DCP ||
+		    usb_type == POWER_SUPPLY_USB_TYPE_CDP) {
+			dev_dbg(chip->dev, "Ignoring low current limit %duA for wall charger (DCP/CDP)\n",
+				current_ua);
+			return 0;
+		}
+
 		return smbchg_usb_enable(chip, false);
+	}
 
 	/*
 	 * Use LC mode if the requested current limit matches one of
@@ -918,13 +927,24 @@ static void smbchg_detect_work(struct work_struct *work)
 		smbchg_otg_switch(chip, false);
 
 	/*
-	 * Prepare for running AICL to find a suitable input current
-	 * limit if connected to a DCP or a CDP
+	 * SDPs need the dedicated low-current USB 2.0 full-current mode.
+	 * Leaving the charger in HC/AICL mode can keep a stale high-current
+	 * limit from a previous charger and results in a present-but-weak PC
+	 * charge path.
 	 */
-	if (usb_present && (usb_type == POWER_SUPPLY_USB_TYPE_DCP ||
-			    usb_type == POWER_SUPPLY_USB_TYPE_CDP)) {
+	if (usb_present && !otg_present &&
+	    usb_type == POWER_SUPPLY_USB_TYPE_SDP) {
+		ret = smbchg_usb_set_ilim(chip, SDP_CURRENT_UA);
+		if (ret < 0) {
+			dev_err(chip->dev,
+				"Failed to set SDP input current limit: %pe\n",
+				ERR_PTR(ret));
+			return;
+		}
+	} else if (usb_present && (usb_type == POWER_SUPPLY_USB_TYPE_DCP ||
+				   usb_type == POWER_SUPPLY_USB_TYPE_CDP)) {
 		/*
-		 * Enable AICL to find a suitable current limit for the
+		 * Prepare AICL to find a suitable input current limit for the
 		 * newly plugged into port.
 		 */
 		ret = smbchg_usb_aicl_enable(chip);
@@ -1116,14 +1136,13 @@ static irqreturn_t smbchg_handle_aicl_done(int irq, void *data)
 {
 	struct smbchg_chip *chip = data;
 	int ilim;
-	int ret;
 
 	dev_dbg(chip->dev, "AICL done");
 
 	ilim = smbchg_usb_get_ilim(chip);
 	if (ilim < 0)
 		dev_warn(chip->dev, "Failed to read AICL result: %pe\n",
-			 ERR_PTR(ret));
+			 ERR_PTR(ilim));
 	else
 		dev_dbg(chip->dev, "AICL result: %uuA", ilim);
 
@@ -1570,6 +1589,48 @@ static int smbchg_init(struct smbchg_chip *chip)
 	 * and enable the charge path if USB is present.
 	 */
 	smbchg_handle_usb_source_detect(0, chip);
+
+	if (chip->smbchg_lite) {
+		ret = qcom_pmic_sec_masked_write(
+			chip->regmap, chip->base + SMBCHG_OTG_OTG_CFG,
+			OTG_HICCUP_ENABLED_BIT, OTG_HICCUP_ENABLED_BIT);
+		if (ret) {
+			dev_err(chip->dev,
+				"Failed to enable OTG hiccup mode: %pe\n",
+				ERR_PTR(ret));
+			return ret;
+		}
+
+		ret = qcom_pmic_sec_masked_write(
+			chip->regmap, chip->base + SMBCHG_OTG_OTG_CFG,
+			OTG_EN_CTRL_MASK, OTG_CMD_CTRL_RID_EN);
+		if (ret) {
+			dev_err(chip->dev,
+				"Failed to configure OTG command control: %pe\n",
+				ERR_PTR(ret));
+			return ret;
+		}
+
+		ret = qcom_pmic_sec_masked_write(
+			chip->regmap, chip->base + SMBCHG_OTG_ICFG,
+			OTG_ILIMIT_MASK, OTG_ILIMIT_1000MA);
+		if (ret) {
+			dev_err(chip->dev,
+				"Failed to configure OTG current limit: %pe\n",
+				ERR_PTR(ret));
+			return ret;
+		}
+
+		ret = qcom_pmic_sec_masked_write(
+			chip->regmap, chip->base + SMBCHG_OTG_TRIM6,
+			OTG_TRIM6_TR_ENB_SKIP_BIT, OTG_TRIM6_TR_ENB_SKIP_BIT);
+		if (ret) {
+			dev_err(chip->dev,
+				"Failed to disable OTG pulse skip: %pe\n",
+				ERR_PTR(ret));
+			return ret;
+		}
+	}
 
 	return 0;
 }
