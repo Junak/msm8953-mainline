@@ -265,14 +265,7 @@ struct smbchg_chip {
 	struct regulator_desc otg_rdesc;
 	struct regulator_dev *otg_reg;
 	int otg_resets;
-	bool otg_pulse_skip_disabled;
-	bool otg_usb_input_suspended;
-	bool otg_usb_path_configured;
-	unsigned int otg_original_usb_cfg;
-	unsigned int otg_original_usbin_chgr_cfg;
-	bool otg_hw_configured;
-	unsigned int otg_original_otg_cfg;
-	unsigned int otg_original_otg_icfg;
+
 
 	struct extcon_dev *edev;
 

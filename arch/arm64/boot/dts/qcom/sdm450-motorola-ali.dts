@@ -37,14 +37,6 @@
 		};
 	};
 
-	usb_otg_vreg: usb-otg-switch {
-		compatible = "regulator-fixed";
-		regulator-name = "usb_otg_vreg";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-		vin-supply = <&otg_vbus>;
-	};
-
 	reserved-memory {
 		qseecom_mem: qseecom@84300000 {
 			reg = <0x0 0x84300000 0x0 0x2000000>;
@@ -102,7 +94,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&fusb302_int_default>;
 
-		vbus-supply = <&usb_otg_vreg>;
+		vbus-supply = <&otg_vbus>;
 		usb-role-switch = <&usb3>;
 
 		connector {
@@ -405,6 +397,7 @@
 
 &usb3 {
 	dr_mode = "otg";
+	usb-psy-name = "qcom-smbchg-usb";
 	status = "okay";
 };
 
