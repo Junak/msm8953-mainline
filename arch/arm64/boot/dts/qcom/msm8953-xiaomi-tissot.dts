@@ -275,6 +275,13 @@
 		bias-disable;
 		output-low;
 	};
+
+	cam_front_reset_default: cam_front_reset_default {
+		pins = "gpio129";
+		function = "gpio";
+		bias-disable;
+		drive-strength = <2>;
+	};
 };
 
 &uart_0 {
@@ -291,4 +298,57 @@
 &wcd_codec {
 	qcom,mbhc-vthreshold-high = <91 259 488 488 488>;
 	qcom,mbhc-vthreshold-low = <91 259 488 488 488>;
+};
+
+&camss {
+	status = "okay";
+	vdda-supply = <&pm8953_s3>;
+
+	ports {
+		port@2 {
+			reg = <2>;
+			csiphy2_ep: endpoint {
+				data-lanes = <0 1>;
+				remote-endpoint = <&front_cam_ep>;
+			};
+		};
+	};
+};
+
+&cci {
+        status = "okay";
+};
+
+&cci_i2c1 {
+	camera-sensor@2d { // Front camera
+		compatible = "samsung,s5k5e8yx";
+
+		reg = <0x2d>;
+
+		clocks = <&gcc GCC_CAMSS_MCLK1_CLK>;
+		assigned-clocks = <&gcc GCC_CAMSS_MCLK1_CLK>;
+		assigned-clock-rates = <24000000>;
+
+		reset-gpios = <&tlmm 129 GPIO_ACTIVE_LOW>;
+
+		pinctrl-0 = <&cam_front_reset_default>,
+			<&camss_mclk1_default>;
+		pinctrl-names = "default";
+
+		vdda-supply= <&pm8953_l22>;
+		vddd-supply = <&pm8953_l23>;
+		vddio-supply = <&pm8953_l6>;
+
+		rotation = <90>;
+		orientation = <0>;
+
+		status = "okay";
+
+		port {
+			front_cam_ep: endpoint {
+				remote-endpoint = <&csiphy2_ep>;
+				link-frequencies = /bits/ 64 <420000000>;
+			};
+		};
+	};
 };
