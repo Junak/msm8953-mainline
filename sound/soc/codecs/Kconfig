@@ -266,6 +266,7 @@ config SND_SOC_ALL_CODECS
 	imply SND_SOC_STAC9766
 	imply SND_SOC_STI_SAS
 	imply SND_SOC_TAS2552
+	imply SND_SOC_TAS2557
 	imply SND_SOC_TAS2562
 	imply SND_SOC_TAS2764
 	imply SND_SOC_TAS2770
@@ -2143,6 +2144,16 @@ config SND_SOC_STI_SAS
 config SND_SOC_TAS2552
 	tristate "Texas Instruments TAS2552 Mono Audio amplifier"
 	depends on I2C
+
+config SND_SOC_TAS2557
+	tristate "Texas Instruments TAS2557 Mono Smart Amplifier"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  Enable support for the Texas Instruments TAS2557 mono smart
+	  amplifier with integrated DSP. The on-chip DSP requires firmware
+	  (tas2557_uCDSP.bin) to be present in the firmware search path;
+	  audio cannot pass through the device without it.
 
 config SND_SOC_TAS2562
 	tristate "Texas Instruments TAS2562 Mono Audio amplifier"
