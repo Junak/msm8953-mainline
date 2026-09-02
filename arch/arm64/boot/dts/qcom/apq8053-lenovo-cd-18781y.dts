@@ -378,8 +378,6 @@
 		"DMIC2", "MIC BIAS Internal1",
 		"DMIC2", "Digital Mic2";
 
-	aux-devices = <&speaker_amp>;
-
 	status = "okay";
 
 	quaternary-mi2s-dai-link {
